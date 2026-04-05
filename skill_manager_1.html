@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>和太鼓青富士 — スキル管理</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #242424;
+  --surface3: #2e2e2e;
+  --border: #333;
+  --red: #ff0000;
+  --text: #f1f1f1;
+  --text2: #999;
+  --text3: #555;
+  --green: #4ade80;
+  --green-bg: rgba(74,222,128,0.12);
+  --green-border: rgba(74,222,128,0.25);
+  --blue: #60a5fa;
+  --blue-bg: rgba(96,165,250,0.12);
+  --blue-border: rgba(96,165,250,0.25);
+  --tab-h: 48px;
+  --header-h: 52px;
+}
+
+html, body { height: 100%; }
+body {
+  font-family: 'Roboto','Noto Sans JP',sans-serif;
+  background: var(--bg); color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* ── ヘッダー ── */
+.app-header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+  height: var(--header-h);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 16px; gap: 12px;
+}
+
+.logo { display: flex; align-items: center; gap: 6px; }
+.logo svg { display: block; }
+.logo-wm { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 2px; letter-spacing: -0.3px; }
+.wm-a { font-weight: 300; }
+.wm-t { background: var(--red); color: #fff; font-weight: 700; padding: 1px 5px 2px; border-radius: 3px; font-size: 15px; }
+
+.header-sep { width: 1px; height: 20px; background: var(--border); }
+.header-sub { font-size: 13px; color: var(--text2); }
+
+.header-mode {
+  margin-left: auto;
+  display: flex; background: var(--surface2); border-radius: 20px;
+  border: 1px solid var(--border); overflow: hidden;
+}
+.mode-btn {
+  padding: 5px 12px; font-size: 12px; font-family: inherit;
+  background: transparent; border: none; color: var(--text2);
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.mode-btn.active { background: #f1f1f1; color: #111; border-radius: 20px; }
+
+/* ── タブナビ ── */
+.tab-nav {
+  position: fixed; top: var(--header-h); left: 0; right: 0; z-index: 290;
+  height: var(--tab-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: stretch;
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tab-nav::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+  flex-shrink: 0; padding: 0 16px;
+  font-size: 13px; font-family: inherit;
+  background: transparent; border: none;
+  color: var(--text2); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.tab-btn.active { color: var(--text); border-bottom-color: var(--red); }
+
+/* ── スクロール本体 ── */
+.scroll-body {
+  position: fixed;
+  top: calc(var(--header-h) + var(--tab-h));
+  left: 0; right: 0; bottom: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── 凡例バー ── */
+.legend-bar {
+  display: flex; gap: 12px; align-items: center;
+  padding: 8px 16px; font-size: 11px; color: var(--text3);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg); flex-wrap: wrap;
+}
+.leg { display: flex; align-items: center; gap: 5px; }
+.leg-badge {
+  width: 22px; height: 22px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.leg-badge.n { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+.leg-badge.m { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.leg-badge.e { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); font-size: 10px; }
+
+/* ── 曲別ビュー ── */
+.song-section { border-bottom: 1px solid var(--border); }
+
+.song-acc-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; cursor: pointer;
+  background: var(--surface);
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.song-acc-header:active { background: var(--surface2); }
+
+.song-acc-title { font-size: 15px; font-weight: 500; flex: 1; }
+.song-acc-rate { font-size: 11px; color: var(--text3); }
+.song-acc-prog {
+  flex: 1; max-width: 80px; height: 4px;
+  background: var(--surface3); border-radius: 2px; overflow: hidden;
+}
+.song-acc-prog-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s; }
+.acc-arrow {
+  font-size: 11px; color: var(--text3);
+  transition: transform 0.2s; flex-shrink: 0;
+}
+.acc-arrow.open { transform: rotate(180deg); }
+
+.song-acc-body { display: none; }
+.song-acc-body.open { display: block; }
+
+/* メンバー行 */
+.member-row {
+  padding: 10px 16px;
+  border-top: 1px solid rgba(51,51,51,0.5);
+  background: var(--bg);
+}
+.member-row-name {
+  font-size: 13px; font-weight: 500; color: var(--text2);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.member-initial {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--red); color: #fff;
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.part-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.part-tag {
+  display: flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 6px; font-size: 12px;
+  cursor: pointer; transition: opacity 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.part-tag:active { opacity: 0.7; }
+.part-tag.niju { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+.part-tag.maru { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.part-tag.empty { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+.part-tag-sk { font-weight: 700; font-size: 13px; }
+
+/* ── メンバー別ビュー ── */
+.member-detail { padding: 16px; }
+
+.member-profile {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px; background: var(--surface);
+  border-radius: 12px; margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+.avatar-lg {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--red); color: #fff;
+  font-size: 20px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.profile-name { font-size: 17px; font-weight: 500; }
+.profile-stats { font-size: 12px; color: var(--text3); margin-top: 4px; }
+.profile-bar { width: 100%; height: 5px; background: var(--surface3); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.profile-bar-fill { height: 100%; background: var(--blue); border-radius: 3px; transition: width 0.4s; }
+
+.member-note {
+  padding: 10px 14px; font-size: 12px; color: var(--text2);
+  background: rgba(255,255,100,0.04); border: 1px solid rgba(255,255,100,0.1);
+  border-radius: 8px; margin-bottom: 14px;
+  display: flex; gap: 8px; align-items: flex-start;
+}
+
+.song-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden; margin-bottom: 10px;
+}
+.song-card-header {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.song-card-title { font-size: 14px; font-weight: 500; flex: 1; }
+.song-card-count { font-size: 11px; color: var(--text3); }
+.song-card-body { padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── モーダル ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8); z-index: 500;
+  align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface); border-radius: 16px 16px 0 0;
+  width: 100%; max-width: 480px;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  animation: slideUp 0.22s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.modal-handle {
+  width: 36px; height: 4px; background: var(--surface3);
+  border-radius: 2px; margin: 12px auto 0;
+}
+.modal-header {
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title { font-size: 15px; font-weight: 500; }
+.modal-sub   { font-size: 12px; color: var(--text3); margin-top: 3px; }
+
+.modal-options { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.skill-opt {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; border: 1px solid var(--border);
+  border-radius: 10px; cursor: pointer;
+  transition: all 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.skill-opt:active { opacity: 0.8; }
+.skill-opt.selected { border-color: var(--blue); background: rgba(96,165,250,0.08); }
+.opt-badge {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; flex-shrink: 0;
+}
+.opt-badge.n { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+.opt-badge.m { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.opt-badge.e { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+.opt-label { font-size: 15px; font-weight: 500; }
+.opt-desc  { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+.modal-btns {
+  display: flex; gap: 10px; padding: 4px 16px 16px;
+}
+.btn {
+  flex: 1; padding: 13px; border-radius: 10px;
+  font-size: 15px; font-family: inherit; font-weight: 500;
+  border: none; cursor: pointer;
+}
+.btn-cancel { background: var(--surface2); color: var(--text2); }
+.btn-save   { background: var(--red); color: #fff; }
+
+/* toast */
+.toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); padding: 10px 20px; border-radius: 20px;
+  font-size: 13px; opacity: 0; transition: all 0.25s;
+  z-index: 999; pointer-events: none; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ページ末余白 */
+.page-pad { height: 40px; }
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<div class="app-header">
+  <div class="logo">
+    
+    <div class="logo-wm"><span class="wm-a">Aofuji</span><span class="wm-t">Tube</span></div>
+  </div>
+  <div class="header-sep"></div>
+  <div class="header-sub">スキル管理</div>
+  <div class="header-mode">
+    <button class="mode-btn active" id="modeSong"   onclick="setMode('song')">曲別</button>
+    <button class="mode-btn"        id="modeMember" onclick="setMode('member')">メンバー別</button>
+  </div>
+</div>
+
+<!-- タブ -->
+<div class="tab-nav" id="tabNav"></div>
+
+<!-- スクロール本体 -->
+<div class="scroll-body" id="scrollBody">
+  <div class="legend-bar">
+    <div class="leg"><div class="leg-badge n">◎</div>習得済み</div>
+    <div class="leg"><div class="leg-badge m">〇</div>練習中</div>
+    <div class="leg"><div class="leg-badge e">—</div>未習得</div>
+    <span style="margin-left:auto;font-size:10px;color:var(--text3)">タップで更新</span>
+  </div>
+  <div id="pageContent"></div>
+  <div class="page-pad"></div>
+</div>
+
+<!-- 編集モーダル（ボトムシート） -->
+<div class="modal-overlay" id="modal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle"></div>
+      <div class="modal-sub"   id="modalSub"></div>
+    </div>
+    <div class="modal-options">
+      <div class="skill-opt" id="optNiju" onclick="selectOpt('◎')">
+        <div class="opt-badge n">◎</div>
+        <div><div class="opt-label">習得済み</div><div class="opt-desc">演奏できる</div></div>
+      </div>
+      <div class="skill-opt" id="optMaru" onclick="selectOpt('〇')">
+        <div class="opt-badge m">〇</div>
+        <div><div class="opt-label">練習中</div><div class="opt-desc">習得に向けて練習している</div></div>
+      </div>
+      <div class="skill-opt" id="optNone" onclick="selectOpt('')">
+        <div class="opt-badge e">—</div>
+        <div><div class="opt-label">未習得</div><div class="opt-desc">まだ習得していない</div></div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-save"   onclick="saveSkill()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── マスターデータ ──
+const MASTER = {"songs":["神無月","炎","絆","朱花","晴れ","キラ☆綺羅","Festa","凱風","ムスビバ","春の深山","夏宵"],"song_parts":{"神無月":[{"full":"1.神無月_A","label":"A"},{"full":"1.神無月_B","label":"B"},{"full":"1.神無月_C","label":"C"},{"full":"1.神無月_D","label":"D"},{"full":"1.神無月_締","label":"締"}],"炎":[{"full":"2.炎_上手","label":"上手"},{"full":"2.炎_下手","label":"下手"},{"full":"2.炎_長ベ","label":"長ベ"},{"full":"2.炎_締","label":"締"},{"full":"2.炎_スロー","label":"スロー"}],"絆":[{"full":"3.絆_上手","label":"上手"},{"full":"3.絆_下手","label":"下手"},{"full":"3.絆_締","label":"締"}],"朱花":[{"full":"4.朱花_先","label":"先"},{"full":"4.朱花_後","label":"後"},{"full":"4.朱花_締","label":"締"}],"晴れ":[{"full":"5.晴れ_長胴1","label":"長胴1"},{"full":"5.晴れ_長胴2","label":"長胴2"},{"full":"5.晴れ_締","label":"締"}],"キラ☆綺羅":[{"full":"6.キラ☆綺羅_長胴","label":"長胴"},{"full":"6.キラ☆綺羅_長べ","label":"長べ"},{"full":"6.キラ☆綺羅_締","label":"締"}],"Festa":[{"full":"7.Festa_上手","label":"上手"},{"full":"7.Festa_下手","label":"下手"},{"full":"7.Festa_締","label":"締"}],"凱風":[{"full":"8.凱風_長胴1","label":"長胴1"},{"full":"8.凱風_長胴2","label":"長胴2"},{"full":"8.凱風_長胴3","label":"長胴3"},{"full":"8.凱風_締","label":"締"}],"ムスビバ":[{"full":"9.ムスビバ_長胴1","label":"長胴1"},{"full":"9.ムスビバ_長胴2","label":"長胴2"},{"full":"9.ムスビバ_長胴3","label":"長胴3"},{"full":"9.ムスビバ_長胴4","label":"長胴4"},{"full":"9.ムスビバ_締","label":"締"},{"full":"9.ムスビバ_大1","label":"大1"},{"full":"9.ムスビバ_大2","label":"大2"}],"春の深山":[{"full":"10.春の深山_長胴1","label":"長胴1"},{"full":"10.春の深山_長胴2","label":"長胴2"},{"full":"10.春の深山_締","label":"締"}],"夏宵":[{"full":"11.夏宵_笛","label":"笛"},{"full":"11.夏宵_長胴","label":"長胴"},{"full":"11.夏宵_締","label":"締"},{"full":"11.夏宵_バット","label":"バット"},{"full":"11.夏宵_桶","label":"桶"},{"full":"11.夏宵_チャッパ","label":"チャッパ"}]},"members":[{"name":"三村 善信","skills":{"1.神無月_A":"◎","1.神無月_B":"◎","1.神無月_C":"◎","1.神無月_D":"◎","1.神無月_締":"","2.炎_上手":"◎","2.炎_下手":"◎","2.炎_長ベ":"","2.炎_締":"","2.炎_スロー":"◎","3.絆_上手":"◎","3.絆_下手":"◎","3.絆_締":"","4.朱花_先":"◎","4.朱花_後":"◎","4.朱花_締":"","5.晴れ_長胴1":"〇","5.晴れ_長胴2":"〇","5.晴れ_締":"","6.キラ☆綺羅_長胴":"◎","6.キラ☆綺羅_長べ":"◎","6.キラ☆綺羅_締":"","7.Festa_上手":"◎","7.Festa_下手":"◎","7.Festa_締":"","8.凱風_長胴1":"◎","8.凱風_長胴2":"","8.凱風_長胴3":"","8.凱風_締":"","9.ムスビバ_長胴1":"","9.ムスビバ_長胴2":"","9.ムスビバ_長胴3":"◎","9.ムスビバ_長胴4":"","9.ムスビバ_締":"","9.ムスビバ_大1":"","9.ムスビバ_大2":"","10.春の深山_長胴1":"◎","10.春の深山_長胴2":"","10.春の深山_締":"","11.夏宵_笛":"","11.夏宵_長胴":"","11.夏宵_締":"","11.夏宵_バット":"","11.夏宵_桶":"◎","11.夏宵_チャッパ":""},"note":"夏宵 篠笛練習中"},{"name":"東 由裕","skills":{"1.神無月_A":"〇","1.神無月_B":"〇","1.神無月_C":"〇","1.神無月_D":"◎","1.神無月_締":"","2.炎_上手":"◎","2.炎_下手":"〇","2.炎_長ベ":"","2.炎_締":"","2.炎_スロー":"◎","3.絆_上手":"◎","3.絆_下手":"◎","3.絆_締":"","4.朱花_先":"◎","4.朱花_後":"〇","4.朱花_締":"","5.晴れ_長胴1":"〇","5.晴れ_長胴2":"〇","5.晴れ_締":"","6.キラ☆綺羅_長胴":"◎","6.キラ☆綺羅_長べ":"","6.キラ☆綺羅_締":"","7.Festa_上手":"◎","7.Festa_下手":"◎","7.Festa_締":"","8.凱風_長胴1":"","8.凱風_長胴2":"◎","8.凱風_長胴3":"","8.凱風_締":"","9.ムスビバ_長胴1":"","9.ムスビバ_長胴2":"◎","9.ムスビバ_長胴3":"","9.ムスビバ_長胴4":"","9.ムスビバ_締":"","9.ムスビバ_大1":"","9.ムスビバ_大2":"","10.春の深山_長胴1":"◎","10.春の深山_長胴2":"","10.春の深山_締":"","11.夏宵_笛":"","11.夏宵_長胴":"〇","11.夏宵_締":"","11.夏宵_バット":"","11.夏宵_桶":"","11.夏宵_チャッパ":""},"note":""},{"name":"塚本佳織","skills":{"1.神無月_A":"","1.神無月_B":"〇","1.神無月_C":"〇","1.神無月_D":"","1.神無月_締":"","2.炎_上手":"","2.炎_下手":"◎","2.炎_長ベ":"","2.炎_締":"","2.炎_スロー":"","3.絆_上手":"","3.絆_下手":"◎","3.絆_締":"","4.朱花_先":"〇","4.朱花_後":"◎","4.朱花_締":"","5.晴れ_長胴1":"","5.晴れ_長胴2":"","5.晴れ_締":"","6.キラ☆綺羅_長胴":"◎","6.キラ☆綺羅_長べ":"","6.キラ☆綺羅_締":"","7.Festa_上手":"","7.Festa_下手":"◎","7.Festa_締":"","8.凱風_長胴1":"","8.凱風_長胴2":"◎","8.凱風_長胴3":"","8.凱風_締":"","9.ムスビバ_長胴1":"","9.ムスビバ_長胴2":"","9.ムスビバ_長胴3":"","9.ムスビバ_長胴4":"","9.ムスビバ_締":"","9.ムスビバ_大1":"","9.ムスビバ_大2":"","10.春の深山_長胴1":"","10.春の深山_長胴2":"","10.春の深山_締":"","11.夏宵_笛":"","11.夏宵_長胴":"","11.夏宵_締":"","11.夏宵_バット":"","11.夏宵_桶":"","11.夏宵_チャッパ":""},"note":""},{"name":"角田直大","skills":{"1.神無月_A":"〇","1.神無月_B":"◎","1.神無月_C":"〇","1.神無月_D":"〇","1.神無月_締":"","2.炎_上手":"〇","2.炎_下手":"◎","2.炎_長ベ":"","2.炎_締":"","2.炎_スロー":"◎","3.絆_上手":"◎","3.絆_下手":"◎","3.絆_締":"","4.朱花_先":"◎","4.朱花_後":"◎","4.朱花_締":"","5.晴れ_長胴1":"","5.晴れ_長胴2":"","5.晴れ_締":"","6.キラ☆綺羅_長胴":"◎","6.キラ☆綺羅_長べ":"","6.キラ☆綺羅_締":"","7.Festa_上手":"◎","7.Festa_下手":"◎","7.Festa_締":"","8.凱風_長胴1":"","8.凱風_長胴2":"◎","8.凱風_長胴3":"","8.凱風_締":"","9.ムスビバ_長胴1":"","9.ムスビバ_長胴2":"〇","9.ムスビバ_長胴3":"","9.ムスビバ_長胴4":"〇","9.ムスビバ_締":"","9.ムスビバ_大1":"","9.ムスビバ_大2":"","10.春の深山_長胴1":"〇","10.春の深山_長胴2":"","10.春の深山_締":"","11.夏宵_笛":"〇","11.夏宵_長胴":"","11.夏宵_締":"","11.夏宵_バット":"","11.夏宵_桶":"","11.夏宵_チャッパ":""},"note":"篠笛練習中"},{"name":"桐生 恵美子","skills":{"1.神無月_A":"〇","1.神無月_B":"◎","1.神無月_C":"〇","1.神無月_D":"〇","1.神無月_締":"","2.炎_上手":"","2.炎_下手":"◎","2.炎_長ベ":"","2.炎_締":"","2.炎_スロー":"◎","3.絆_上手":"◎","3.絆_下手":"","3.絆_締":"","4.朱花_先":"〇","4.朱花_後":"◎","4.朱花_締":"","5.晴れ_長胴1":"","5.晴れ_長胴2":"","5.晴れ_締":"","6.キラ☆綺羅_長胴":"◎","6.キラ☆綺羅_長べ":"","6.キラ☆綺羅_締":"","7.Festa_上手":"◎","7.Festa_下手":"〇","7.Festa_締":"","8.凱風_長胴1":"","8.凱風_長胴2":"◎","8.凱風_長胴3":"","8.凱風_締":"","9.ムスビバ_長胴1":"","9.ムスビバ_長胴2":"◎","9.ムスビバ_長胴3":"","9.ムスビバ_長胴4":"","9.ムスビバ_締":"","9.ムスビバ_大1":"","9.ムスビバ_大2":"","10.春の深山_長胴1":"","10.春の深山_長胴2":"","10.春の深山_締":"","11.夏宵_笛":"","11.夏宵_長胴":"","11.夏宵_締":"","11.夏宵_バット":"","11.夏宵_桶":"","11.夏宵_チャッパ":""},"note":""},{"name":"永田 花菜子","skills":{"1.神無月_A":"","1.神無月_B":"〇","1.神無月_C":"〇","1.神無月_D":"","1.神無月_締":"","2.炎_上手":"","2.炎_下手":"","2.炎_長ベ":"","2.炎_締":"","2.炎_スロー":"","3.絆_上手":"","3.絆_下手":"","3.絆_締":"","4.朱花_先":"","4.朱花_後":"〇","4.朱花_締":"","5.晴れ_長胴1":"","5.晴れ_長胴2":"","5.晴れ_締":"","6.キラ☆綺羅_長胴":"","6.キラ☆綺羅_長べ":"","6.キラ☆綺羅_締":"","7.Festa_上手":"","7.Festa_下手":"◎","7.Festa_締":"","8.凱風_長胴1":"","8.凱風_長胴2":"","8.凱風_長胴3":"","8.凱風_締":"","9.ムスビバ_長胴1":"","9.ムスビバ_長胴2":"","9.ムスビバ_長胴3":"","9.ムスビバ_長胴4":"","9.ムスビバ_締":"","9.ムスビバ_大1":"","9.ムスビバ_大2":"","10.春の深山_長胴1":"","10.春の深山_長胴2":"","10.春の深山_締":"","11.夏宵_笛":"","11.夏宵_長胴":"","11.夏宵_締":"","11.夏宵_バット":"","11.夏宵_桶":"","11.夏宵_チャッパ":""},"note":""},{"name":"櫻庭春子","skills":{"1.神無月_A":"◎","1.神無月_B":"◎","1.神無月_C":"◎","1.神無月_D":"◎","1.神無月_締":"","2.炎_上手":"◎","2.炎_下手":"◎","2.炎_長ベ":"〇","2.炎_締":"〇","2.炎_スロー":"◎","3.絆_上手":"◎","3.絆_下手":"〇","3.絆_締":"","4.朱花_先":"◎","4.朱花_後":"〇","4.朱花_締":"","5.晴れ_長胴1":"〇","5.晴れ_長胴2":"〇","5.晴れ_締":"","6.キラ☆綺羅_長胴":"〇","6.キラ☆綺羅_長べ":"","6.キラ☆綺羅_締":"◎","7.Festa_上手":"◎","7.Festa_下手":"〇","7.Festa_締":"","8.凱風_長胴1":"","8.凱風_長胴2":"◎","8.凱風_長胴3":"","8.凱風_締":"","9.ムスビバ_長胴1":"","9.ムスビバ_長胴2":"","9.ムスビバ_長胴3":"","9.ムスビバ_長胴4":"◎","9.ムスビバ_締":"","9.ムスビバ_大1":"","9.ムスビバ_大2":"","10.春の深山_長胴1":"","10.春の深山_長胴2":"","10.春の深山_締":"◎","11.夏宵_笛":"","11.夏宵_長胴":"","11.夏宵_締":"","11.夏宵_バット":"","11.夏宵_桶":"","11.夏宵_チャッパ":"〇"},"note":""},{"name":"山崎","skills":{"1.神無月_A":"〇","1.神無月_B":"◎","1.神無月_C":"◎","1.神無月_D":"〇","1.神無月_締":"","2.炎_上手":"◎","2.炎_下手":"◎","2.炎_長ベ":"","2.炎_締":"","2.炎_スロー":"〇","3.絆_上手":"〇","3.絆_下手":"◎","3.絆_締":"","4.朱花_先":"〇","4.朱花_後":"◎","4.朱花_締":"","5.晴れ_長胴1":"〇","5.晴れ_長胴2":"","5.晴れ_締":"〇","6.キラ☆綺羅_長胴":"◎","6.キラ☆綺羅_長べ":"◎","6.キラ☆綺羅_締":"","7.Festa_上手":"◎","7.Festa_下手":"◎","7.Festa_締":"","8.凱風_長胴1":"〇","8.凱風_長胴2":"◎","8.凱風_長胴3":"","8.凱風_締":"","9.ムスビバ_長胴1":"","9.ムスビバ_長胴2":"","9.ムスビバ_長胴3":"","9.ムスビバ_長胴4":"◎","9.ムスビバ_締":"","9.ムスビバ_大1":"","9.ムスビバ_大2":"◎","10.春の深山_長胴1":"","10.春の深山_長胴2":"◎","10.春の深山_締":"","11.夏宵_笛":"〇","11.夏宵_長胴":"","11.夏宵_締":"","11.夏宵_バット":"","11.夏宵_桶":"◎","11.夏宵_チャッパ":""},"note":"〇がついていない曲も他が出来るよう挑戦したいです！"},{"name":"古和田正人","skills":{"1.神無月_A":"","1.神無月_B":"","1.神無月_C":"","1.神無月_D":"","1.神無月_締":"◎","2.炎_上手":"◎","2.炎_下手":"◎","2.炎_長ベ":"◎","2.炎_締":"","2.炎_スロー":"","3.絆_上手":"◎","3.絆_下手":"","3.絆_締":"","4.朱花_先":"◎","4.朱花_後":"◎","4.朱花_締":"◎","5.晴れ_長胴1":"〇","5.晴れ_長胴2":"","5.晴れ_締":"","6.キラ☆綺羅_長胴":"◎","6.キラ☆綺羅_長べ":"","6.キラ☆綺羅_締":"◎","7.Festa_上手":"◎","7.Festa_下手":"◎","7.Festa_締":"","8.凱風_長胴1":"","8.凱風_長胴2":"","8.凱風_長胴3":"","8.凱風_締":"◎","9.ムスビバ_長胴1":"◎","9.ムスビバ_長胴2":"","9.ムスビバ_長胴3":"","9.ムスビバ_長胴4":"","9.ムスビバ_締":"","9.ムスビバ_大1":"","9.ムスビバ_大2":"","10.春の深山_長胴1":"◎","10.春の深山_長胴2":"","10.春の深山_締":"","11.夏宵_笛":"","11.夏宵_長胴":"","11.夏宵_締":"◎","11.夏宵_バット":"","11.夏宵_桶":"","11.夏宵_チャッパ":""},"note":"篠笛イメージトレーニング中。"},{"name":"松川淳子","skills":{"1.神無月_A":"◎","1.神無月_B":"◎","1.神無月_C":"◎","1.神無月_D":"◎","1.神無月_締":"","2.炎_上手":"◎","2.炎_下手":"◎","2.炎_長ベ":"","2.炎_締":"","2.炎_スロー":"◎","3.絆_上手":"◎","3.絆_下手":"◎","3.絆_締":"","4.朱花_先":"◎","4.朱花_後":"◎","4.朱花_締":"","5.晴れ_長胴1":"","5.晴れ_長胴2":"","5.晴れ_締":"","6.キラ☆綺羅_長胴":"◎","6.キラ☆綺羅_長べ":"","6.キラ☆綺羅_締":"","7.Festa_上手":"〇","7.Festa_下手":"◎","7.Festa_締":"","8.凱風_長胴1":"","8.凱風_長胴2":"◎","8.凱風_長胴3":"","8.凱風_締":"","9.ムスビバ_長胴1":"◎","9.ムスビバ_長胴2":"","9.ムスビバ_長胴3":"","9.ムスビバ_長胴4":"","9.ムスビバ_締":"","9.ムスビバ_大1":"","9.ムスビバ_大2":"","10.春の深山_長胴1":"","10.春の深山_長胴2":"◎","10.春の深山_締":"","11.夏宵_笛":"","11.夏宵_長胴":"◎","11.夏宵_締":"","11.夏宵_バット":"","11.夏宵_桶":"","11.夏宵_チャッパ":""},"note":""}]};
+
+// 状態
+const STORE = 'aofuji_skills_v2';
+let state = (() => { try { const s=localStorage.getItem(STORE); return s?JSON.parse(s):JSON.parse(JSON.stringify(MASTER)); } catch(e){return JSON.parse(JSON.stringify(MASTER));} })();
+function persist() { localStorage.setItem(STORE, JSON.stringify(state)); }
+
+let mode = 'song';
+let curSong = state.songs[0];
+let curMember = 0;
+let openSongs = new Set([state.songs[0]]);
+
+function sk(mi, part) { return state.members[mi].skills[part] || ''; }
+function skCls(v) { return v==='◎'?'niju':v==='〇'?'maru':'empty'; }
+function skLbl(v) { return v==='◎'?'◎':v==='〇'?'〇':'—'; }
+
+// ── タブ描画 ──
+function renderTabs() {
+  const nav = document.getElementById('tabNav');
+  if (mode === 'song') {
+    nav.innerHTML = state.songs.map(s =>
+      `<button class="tab-btn${s===curSong?' active':''}" onclick="selectSong('${s}')">${s}</button>`
+    ).join('');
+  } else {
+    nav.innerHTML = state.members.map((m,i) =>
+      `<button class="tab-btn${i===curMember?' active':''}" onclick="selectMember(${i})">${m.name.split(' ')[0]}</button>`
+    ).join('');
+  }
+  // アクティブタブをスクロール位置に
+  const active = nav.querySelector('.tab-btn.active');
+  if (active) active.scrollIntoView({ block:'nearest', inline:'center', behavior:'smooth' });
+}
+
+function selectSong(s) { curSong=s; renderTabs(); renderContent(); }
+function selectMember(i) { curMember=i; renderTabs(); renderContent(); }
+
+// ── モード切替 ──
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeSong').classList.toggle('active', m==='song');
+  document.getElementById('modeMember').classList.toggle('active', m==='member');
+  openSongs = new Set([curSong]);
+  renderTabs();
+  renderContent();
+}
+
+// ── コンテンツ描画 ──
+function renderContent() {
+  document.getElementById('scrollBody').scrollTop = 0;
+  if (mode === 'song') renderSongMode();
+  else renderMemberMode();
+}
+
+// 曲別: 選択曲のメンバー×パート一覧（アコーディオン）
+function renderSongMode() {
+  const parts = state.song_parts[curSong];
+  const members = state.members;
+  const totalSlots = members.length * parts.length;
+  const done = members.reduce((a,m)=>a+parts.filter(p=>m.skills[p.full]==='◎').length,0);
+  const pct = Math.round(done/totalSlots*100);
+
+  let html = `<div style="padding:12px 16px 6px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:10px">
+    <span>${curSong} — 全パート習得率</span>
+    <div style="flex:1;height:4px;background:var(--surface3);border-radius:2px;overflow:hidden">
+      <div style="width:${pct}%;height:100%;background:var(--blue);border-radius:2px"></div>
+    </div>
+    <span>${pct}%</span>
+  </div>`;
+
+  members.forEach((m, mi) => {
+    const done2 = parts.filter(p=>sk(mi,p.full)==='◎').length;
+    const prac  = parts.filter(p=>sk(mi,p.full)==='〇').length;
+    html += `<div class="song-section">
+      <div class="member-row">
+        <div class="member-row-name">
+          <div class="member-initial">${m.name[0]}</div>
+          ${m.name}
+          <span style="margin-left:auto;font-size:11px;color:var(--text3)">◎${done2} 〇${prac}</span>
+        </div>
+        <div class="part-list">`;
+    parts.forEach(p => {
+      const v = sk(mi, p.full);
+      html += `<div class="part-tag ${skCls(v)}" onclick="openModal(${mi},'${p.full}','${m.name}','${curSong} ${p.label}')">
+        <span class="part-tag-sk">${skLbl(v)}</span>${p.label}
+      </div>`;
+    });
+    html += `</div></div></div>`;
+  });
+
+  document.getElementById('pageContent').innerHTML = html;
+}
+
+// メンバー別
+function renderMemberMode() {
+  const m = state.members[curMember];
+  const allParts = Object.keys(m.skills).length;
+  const done = Object.values(m.skills).filter(v=>v==='◎').length;
+  const prac = Object.values(m.skills).filter(v=>v==='〇').length;
+  const pct  = Math.round(done/allParts*100);
+
+  let html = `<div class="member-detail">
+    <div class="member-profile">
+      <div class="avatar-lg">${m.name[0]}</div>
+      <div style="flex:1;min-width:0">
+        <div class="profile-name">${m.name}</div>
+        <div class="profile-stats">習得済み ${done}パート・練習中 ${prac}パート</div>
+        <div class="profile-bar"><div class="profile-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+    </div>`;
+
+  if (m.note) {
+    html += `<div class="member-note"><span>📝</span><span>${m.note}</span></div>`;
+  }
+
+  state.songs.forEach(song => {
+    const parts = state.song_parts[song];
+    const mi = curMember;
+    const songDone = parts.filter(p=>sk(mi,p.full)==='◎').length;
+    const songPrac = parts.filter(p=>sk(mi,p.full)==='〇').length;
+    html += `<div class="song-card">
+      <div class="song-card-header">
+        <div class="song-card-title">${song}</div>
+        <div class="song-card-count" style="color:var(--blue)">◎${songDone}</div>
+        <div class="song-card-count" style="margin-left:6px;color:var(--green)">〇${songPrac}</div>
+      </div>
+      <div class="song-card-body">`;
+    parts.forEach(p => {
+      const v = sk(mi, p.full);
+      html += `<div class="part-tag ${skCls(v)}" onclick="openModal(${mi},'${p.full}','${m.name}','${song} ${p.label}')">
+        <span class="part-tag-sk">${skLbl(v)}</span>${p.label}
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  html += `</div>`;
+  document.getElementById('pageContent').innerHTML = html;
+}
+
+// ── モーダル ──
+let modalCtx = {};
+let selVal = '';
+
+function openModal(mi, part, name, label) {
+  modalCtx = { mi, part };
+  selVal = sk(mi, part);
+  document.getElementById('modalTitle').textContent = name;
+  document.getElementById('modalSub').textContent   = label;
+  ['Niju','Maru','None'].forEach(id=>document.getElementById('opt'+id).classList.remove('selected'));
+  if (selVal==='◎') document.getElementById('optNiju').classList.add('selected');
+  else if (selVal==='〇') document.getElementById('optMaru').classList.add('selected');
+  else document.getElementById('optNone').classList.add('selected');
+  document.getElementById('modal').classList.add('open');
+}
+
+function selectOpt(v) {
+  selVal = v;
+  ['Niju','Maru','None'].forEach(id=>document.getElementById('opt'+id).classList.remove('selected'));
+  if (v==='◎') document.getElementById('optNiju').classList.add('selected');
+  else if (v==='〇') document.getElementById('optMaru').classList.add('selected');
+  else document.getElementById('optNone').classList.add('selected');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+function handleOverlayClick(e) { if (e.target===document.getElementById('modal')) closeModal(); }
+
+function saveSkill() {
+  state.members[modalCtx.mi].skills[modalCtx.part] = selVal;
+  persist();
+  closeModal();
+  toast('スキルを更新しました ✓');
+  renderContent();
+}
+
+// ── Toast ──
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2000);
+}
+
+// 初期化
+renderTabs();
+renderContent();
+</script>
+</body>
+</html>
