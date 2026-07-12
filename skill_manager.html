@@ -6,6 +6,7 @@
 <title>和太鼓青富士 — スキル管理</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.bundle.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -308,6 +309,106 @@ body {
 
 /* ページ末余白 */
 .page-pad { height: 40px; }
+
+/* ── フォーメーション作成 ── */
+.formation-section { padding: 14px 16px 4px; }
+.formation-group-title {
+  font-size: 12px; font-weight: 500; color: var(--text2);
+  margin: 18px 0 8px; letter-spacing: 0.02em;
+}
+.formation-group-title:first-child { margin-top: 2px; }
+
+.song-picker-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.song-chip {
+  padding: 8px 14px; border-radius: 8px; font-size: 13px;
+  font-family: inherit; cursor: pointer;
+  background: var(--surface2); color: var(--text2);
+  border: 1px solid var(--border);
+  -webkit-tap-highlight-color: transparent;
+}
+.song-chip.selected { background: var(--red); color: #fff; border-color: var(--red); }
+
+.order-list { display: flex; flex-direction: column; gap: 6px; }
+.order-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.order-num {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--blue-bg);
+  color: var(--blue); font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.order-song { flex: 1; font-size: 13px; }
+.order-controls { display: flex; gap: 4px; }
+.order-controls button {
+  width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text2); font-size: 12px; cursor: pointer;
+  font-family: inherit;
+}
+.order-controls button:disabled { opacity: 0.3; }
+
+.member-picker-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.member-chip {
+  padding: 7px 12px; border-radius: 16px; font-size: 12px;
+  font-family: inherit; cursor: pointer;
+  background: var(--surface2); color: var(--text3);
+  border: 1px solid var(--border);
+  -webkit-tap-highlight-color: transparent;
+}
+.member-chip.selected { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+
+.formation-actions { margin: 16px 0; }
+.formation-actions .btn { width: 100%; }
+
+.warning-box {
+  margin: 12px 0; padding: 10px 14px; font-size: 12px; color: #ffd580;
+  background: rgba(255,180,60,0.08); border: 1px solid rgba(255,180,60,0.25);
+  border-radius: 8px; display: flex; flex-direction: column; gap: 6px;
+}
+
+.stage-diagram-wrap { width: 100%; }
+.stage-diagram {
+  position: relative; width: 100%;
+  aspect-ratio: 10.8333 / 7.5;
+  background: #fff; border-radius: 4px;
+}
+.stage-border {
+  position: absolute; border: 1.5px solid #2C5F6F; box-sizing: border-box; background: #fff;
+}
+.stage-orient {
+  position: absolute; font-size: 3vw; color: #333;
+  transform: translateX(-4%); white-space: nowrap; font-weight: 500;
+}
+.stage-slot {
+  position: absolute; display: flex; flex-direction: column; align-items: center;
+  transform: translateX(0);
+}
+.stage-slot-circle {
+  width: 62%; aspect-ratio: 1/1; border-radius: 50%; border: 1.5px solid #111;
+  background: #fff; color: #222; font-size: 2.7vw;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 2%;
+}
+.stage-slot-name {
+  width: 92%; padding: 3% 0; border-radius: 3px; font-size: 2.9vw; font-weight: 600;
+  text-align: center; color: #fff; background: #3F6E96;
+}
+.stage-slot.filled .stage-slot-name { background: #3F6E96; }
+.stage-slot.empty .stage-slot-name { background: #9AA5AD; }
+.stage-slot.unresolved .stage-slot-name { background: #B0413E; }
+.stage-slot.shime .stage-slot-name { background: #6B6B6B; }
+.stage-slot-label {
+  margin-top: 3%; font-size: 2.4vw; color: #222; text-align: center; line-height: 1.25;
+  white-space: pre-line;
+}
+@media (min-width: 620px) {
+  .stage-orient { font-size: 13px; }
+  .stage-slot-circle { font-size: 12px; }
+  .stage-slot-name { font-size: 13px; }
+  .stage-slot-label { font-size: 12px; }
+}
+
 </style>
 </head>
 <body>
@@ -323,6 +424,7 @@ body {
   <div class="header-mode">
     <button class="mode-btn active" id="modeSong"   onclick="setMode('song')">曲別</button>
     <button class="mode-btn"        id="modeMember" onclick="setMode('member')">メンバー別</button>
+    <button class="mode-btn"        id="modeFormation" onclick="setMode('formation')">フォーメーション</button>
   </div>
 </div>
 
@@ -393,6 +495,10 @@ function skLbl(v) { return v==='◎'?'◎':v==='〇'?'〇':'—'; }
 // ── タブ描画 ──
 function renderTabs() {
   const nav = document.getElementById('tabNav');
+  if (mode === 'formation') {
+    nav.innerHTML = '';
+    return;
+  }
   if (mode === 'song') {
     nav.innerHTML = state.songs.map(s =>
       `<button class="tab-btn${s===curSong?' active':''}" onclick="selectSong('${s}')">${s}</button>`
@@ -415,6 +521,7 @@ function setMode(m) {
   mode = m;
   document.getElementById('modeSong').classList.toggle('active', m==='song');
   document.getElementById('modeMember').classList.toggle('active', m==='member');
+  document.getElementById('modeFormation').classList.toggle('active', m==='formation');
   openSongs = new Set([curSong]);
   renderTabs();
   renderContent();
@@ -424,7 +531,8 @@ function setMode(m) {
 function renderContent() {
   document.getElementById('scrollBody').scrollTop = 0;
   if (mode === 'song') renderSongMode();
-  else renderMemberMode();
+  else if (mode === 'member') renderMemberMode();
+  else renderFormation();
 }
 
 // 曲別: 選択曲のメンバー×パート一覧（アコーディオン）
@@ -638,6 +746,304 @@ function toast(msg) {
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 2000);
 }
+
+
+// ================= フォーメーション作成 =================
+const FF_LAYOUTS = {"神無月": {"stage_rect": {"left": 1.182795275590551, "top": 2.4623654855643045, "width": 8.424667541557305, "height": 3.827957130358705}, "orient_labels": {"観客側": {"left": 4.755054680664917, "top": 6.488813429571303}, "上手側": {"left": 9.40021653543307, "top": 4.160146544181977}, "下手側": {"left": 0.16363407699037621, "top": 4.126766185476815}, "舞台奥": {"left": 4.679784558180227, "top": 1.7923917322834646}}, "slots": [{"size_type": "1.6", "label_lines": ["B"], "left": 3.543, "top": 4.697, "width": 0.757, "height": 1.165}, {"size_type": "1.６", "label_lines": ["A"], "left": 2.098, "top": 4.697, "width": 0.757, "height": 1.11}, {"size_type": "1.6", "label_lines": ["C"], "left": 6.431, "top": 4.697, "width": 0.757, "height": 1.105}, {"size_type": "1.6", "label_lines": ["D"], "left": 7.875, "top": 4.697, "width": 0.757, "height": 1.118}, {"size_type": "平", "label_lines": ["B"], "left": 3.004, "top": 3.004, "width": 0.757, "height": 1.137}, {"size_type": "平", "label_lines": ["A"], "left": 1.52, "top": 3.004, "width": 0.749, "height": 1.13}, {"size_type": "平", "label_lines": ["C"], "left": 6.97, "top": 3.036, "width": 0.757, "height": 1.099}, {"size_type": "平", "label_lines": ["D"], "left": 8.443, "top": 3.036, "width": 0.757, "height": 1.112}, {"size_type": "締", "label_lines": ["締"], "left": 4.937, "top": 3.066, "width": 0.757, "height": 1.106}, {"size_type": "1.6", "label_lines": ["B"], "left": 4.987, "top": 4.697, "width": 0.757, "height": 1.165}]}, "炎": {"stage_rect": {"left": 1.182795275590551, "top": 2.4623654855643045, "width": 8.424667541557305, "height": 3.827957130358705}, "orient_labels": {"観客側": {"left": 4.86796697287839, "top": 6.516704943132108}, "上手側": {"left": 9.40021653543307, "top": 4.160146544181977}, "下手側": {"left": 0.16363407699037621, "top": 4.126766185476815}, "舞台奥": {"left": 4.626022528433945, "top": 1.7923917322834646}}, "slots": [{"size_type": "1.6", "label_lines": ["下手", "長べ"], "left": 4.93, "top": 4.424, "width": 0.757, "height": 1.452}, {"size_type": "1.6", "label_lines": ["スロー", "上手"], "left": 6.434, "top": 4.424, "width": 0.783, "height": 1.394}, {"size_type": "1.6", "label_lines": ["上手", "スロー"], "left": 7.964, "top": 4.424, "width": 0.784, "height": 1.406}, {"size_type": "1.6", "label_lines": ["下手", "スロー"], "left": 3.413, "top": 4.424, "width": 0.77, "height": 1.4}, {"size_type": "1.6", "label_lines": ["下手", "スロー"], "left": 1.838, "top": 4.424, "width": 0.828, "height": 1.328}, {"size_type": "平", "label_lines": ["下手", "スロー"], "left": 1.384, "top": 2.697, "width": 0.757, "height": 1.402}, {"size_type": "平", "label_lines": ["下手", "スロー"], "left": 3.188, "top": 2.697, "width": 0.757, "height": 1.366}, {"size_type": "平", "label_lines": ["上手", "スロー"], "left": 6.602, "top": 2.697, "width": 0.812, "height": 1.347}, {"size_type": "平", "label_lines": ["上手", "スロー"], "left": 8.461, "top": 2.697, "width": 0.768, "height": 1.372}, {"size_type": "締", "label_lines": ["締"], "left": 4.992, "top": 2.697, "width": 0.563, "height": 1.15}]}, "絆": {"stage_rect": {"left": 1.182795275590551, "top": 2.4623654855643045, "width": 8.424667541557305, "height": 3.827957130358705}, "orient_labels": {"舞台奥": {"left": 4.626022528433945, "top": 1.7923917322834646}, "観客側": {"left": 4.755054680664917, "top": 6.488813429571303}, "上手側": {"left": 9.40021653543307, "top": 4.160146544181977}, "下手側": {"left": 0.16363407699037621, "top": 4.126766185476815}}, "slots": [{"size_type": "1.6", "label_lines": ["下手"], "left": 3.603, "top": 4.75, "width": 0.757, "height": 1.165}, {"size_type": "1.６", "label_lines": ["下手"], "left": 2.19, "top": 4.75, "width": 0.757, "height": 1.11}, {"size_type": "1.6", "label_lines": ["上手"], "left": 6.43, "top": 4.75, "width": 0.757, "height": 1.291}, {"size_type": "1.6", "label_lines": ["上手"], "left": 7.843, "top": 4.75, "width": 0.757, "height": 1.118}, {"size_type": "平", "label_lines": ["下手"], "left": 3.264, "top": 3.02, "width": 0.757, "height": 1.137}, {"size_type": "平", "label_lines": ["下手"], "left": 1.52, "top": 3.02, "width": 0.749, "height": 1.13}, {"size_type": "平", "label_lines": ["上手"], "left": 6.769, "top": 3.02, "width": 0.757, "height": 1.099}, {"size_type": "平", "label_lines": ["上手"], "left": 8.521, "top": 3.02, "width": 0.757, "height": 1.297}, {"size_type": "締", "label_lines": ["締"], "left": 5.016, "top": 3.02, "width": 0.757, "height": 1.106}, {"size_type": "1.6", "label_lines": ["上手"], "left": 5.016, "top": 4.75, "width": 0.757, "height": 1.165}]}, "朱花": {"stage_rect": {"left": 1.182795275590551, "top": 2.4623654855643045, "width": 8.424667541557305, "height": 3.827957130358705}, "orient_labels": {"舞台奥": {"left": 4.626022528433945, "top": 1.7923917322834646}, "観客側": {"left": 4.755054680664917, "top": 6.488813429571303}, "上手側": {"left": 9.40021653543307, "top": 4.160146544181977}, "下手側": {"left": 0.16363407699037621, "top": 4.126766185476815}}, "slots": [{"size_type": "1.6", "label_lines": ["先"], "left": 2.853, "top": 4.795, "width": 0.757, "height": 1.165}, {"size_type": "1.６", "label_lines": ["後"], "left": 1.448, "top": 4.823, "width": 0.757, "height": 1.11}, {"size_type": "1.6", "label_lines": ["後"], "left": 7.068, "top": 4.732, "width": 0.757, "height": 1.291}, {"size_type": "1.6", "label_lines": ["先"], "left": 8.472, "top": 4.818, "width": 0.757, "height": 1.118}, {"size_type": "平", "label_lines": ["先"], "left": 3.264, "top": 3.02, "width": 0.757, "height": 1.137}, {"size_type": "平", "label_lines": ["後"], "left": 1.733, "top": 3.02, "width": 0.749, "height": 1.13}, {"size_type": "平", "label_lines": ["後"], "left": 6.769, "top": 3.02, "width": 0.757, "height": 1.099}, {"size_type": "平", "label_lines": ["先"], "left": 8.251, "top": 3.02, "width": 0.757, "height": 1.297}, {"size_type": "締", "label_lines": ["締"], "left": 5.016, "top": 3.02, "width": 0.757, "height": 1.106}, {"size_type": "1.6", "label_lines": ["後"], "left": 4.258, "top": 4.795, "width": 0.757, "height": 1.165}, {"size_type": "1.6", "label_lines": ["先"], "left": 5.663, "top": 4.825, "width": 0.757, "height": 1.105}]}, "晴れ": {"stage_rect": {"left": 1.182795275590551, "top": 2.4623654855643045, "width": 8.424667541557305, "height": 3.827957130358705}, "orient_labels": {"舞台奥": {"left": 4.626022528433945, "top": 1.7923917322834646}, "観客側": {"left": 4.755054680664917, "top": 6.488813429571303}, "上手側": {"left": 9.40021653543307, "top": 4.160146544181977}, "下手側": {"left": 0.16363407699037621, "top": 4.126766185476815}}, "slots": [{"size_type": "1.6", "label_lines": ["先"], "left": 2.853, "top": 4.795, "width": 0.757, "height": 1.165}, {"size_type": "1.６", "label_lines": ["後"], "left": 1.448, "top": 4.823, "width": 0.757, "height": 1.11}, {"size_type": "1.6", "label_lines": ["後"], "left": 7.068, "top": 4.732, "width": 0.757, "height": 1.291}, {"size_type": "1.6", "label_lines": ["先"], "left": 8.472, "top": 4.818, "width": 0.757, "height": 1.118}, {"size_type": "平", "label_lines": ["先"], "left": 3.264, "top": 3.02, "width": 0.757, "height": 1.137}, {"size_type": "平", "label_lines": ["後"], "left": 1.733, "top": 3.02, "width": 0.749, "height": 1.13}, {"size_type": "平", "label_lines": ["後"], "left": 6.769, "top": 3.02, "width": 0.757, "height": 1.099}, {"size_type": "平", "label_lines": ["先"], "left": 8.251, "top": 3.02, "width": 0.757, "height": 1.297}, {"size_type": "締", "label_lines": ["締"], "left": 5.016, "top": 3.02, "width": 0.757, "height": 1.106}, {"size_type": "1.6", "label_lines": ["後"], "left": 4.258, "top": 4.795, "width": 0.757, "height": 1.165}, {"size_type": "1.6", "label_lines": ["先"], "left": 5.663, "top": 4.825, "width": 0.757, "height": 1.105}]}, "Festa": {"stage_rect": {"left": 1.182795275590551, "top": 2.4623654855643045, "width": 8.424667541557305, "height": 3.827957130358705}, "orient_labels": {"舞台奥": {"left": 4.626022528433945, "top": 1.7923917322834646}, "観客側": {"left": 4.755054680664917, "top": 6.488813429571303}, "上手側": {"left": 9.40021653543307, "top": 4.160146544181977}, "下手側": {"left": 0.16363407699037621, "top": 4.126766185476815}}, "slots": [{"size_type": "1.6", "label_lines": ["下手"], "left": 3.603, "top": 4.75, "width": 0.757, "height": 1.165}, {"size_type": "1.６", "label_lines": ["下手"], "left": 2.19, "top": 4.75, "width": 0.757, "height": 1.11}, {"size_type": "1.6", "label_lines": ["上手"], "left": 6.43, "top": 4.75, "width": 0.757, "height": 1.291}, {"size_type": "1.6", "label_lines": ["上手"], "left": 7.843, "top": 4.75, "width": 0.757, "height": 1.118}, {"size_type": "平", "label_lines": ["下手"], "left": 3.264, "top": 3.02, "width": 0.757, "height": 1.137}, {"size_type": "平", "label_lines": ["下手"], "left": 1.52, "top": 3.02, "width": 0.749, "height": 1.13}, {"size_type": "平", "label_lines": ["上手"], "left": 6.769, "top": 3.02, "width": 0.757, "height": 1.099}, {"size_type": "平", "label_lines": ["上手"], "left": 8.521, "top": 3.02, "width": 0.757, "height": 1.297}, {"size_type": "締", "label_lines": ["締"], "left": 5.016, "top": 3.02, "width": 0.757, "height": 1.106}, {"size_type": "1.6", "label_lines": ["上手"], "left": 5.016, "top": 4.75, "width": 0.757, "height": 1.165}]}, "凱風": {"stage_rect": {"left": 1.182795275590551, "top": 2.4623654855643045, "width": 8.424667541557305, "height": 3.827957130358705}, "orient_labels": {"観客側": {"left": 4.755054680664917, "top": 6.488813429571303}, "上手側": {"left": 9.40021653543307, "top": 4.160146544181977}, "下手側": {"left": 0.16363407699037621, "top": 4.126766185476815}, "舞台奥": {"left": 4.626022528433945, "top": 1.7923917322834646}}, "slots": [{"size_type": "1.6", "label_lines": ["長胴2"], "left": 3.603, "top": 4.75, "width": 0.757, "height": 1.165}, {"size_type": "1.６", "label_lines": ["長胴2"], "left": 2.19, "top": 4.778, "width": 0.757, "height": 1.11}, {"size_type": "1.6", "label_lines": ["長胴2"], "left": 6.43, "top": 4.78, "width": 0.757, "height": 1.105}, {"size_type": "1.6", "label_lines": ["長胴2"], "left": 7.843, "top": 4.773, "width": 0.757, "height": 1.118}, {"size_type": "平", "label_lines": ["長胴2"], "left": 3.264, "top": 3.02, "width": 0.757, "height": 1.137}, {"size_type": "平", "label_lines": ["長胴2"], "left": 1.52, "top": 3.02, "width": 0.749, "height": 1.13}, {"size_type": "平", "label_lines": ["長胴2"], "left": 6.769, "top": 3.02, "width": 0.757, "height": 1.099}, {"size_type": "平", "label_lines": ["長胴2"], "left": 8.521, "top": 3.02, "width": 0.757, "height": 1.112}, {"size_type": "締", "label_lines": ["締"], "left": 5.016, "top": 3.02, "width": 0.757, "height": 1.106}, {"size_type": "1.6", "label_lines": ["長胴1"], "left": 5.016, "top": 4.75, "width": 0.757, "height": 1.165}]}, "ムスビバ": {"stage_rect": {"left": 1.182795275590551, "top": 2.4623654855643045, "width": 8.424667541557305, "height": 3.827957130358705}, "orient_labels": {"舞台奥": {"left": 4.626022528433945, "top": 1.7923917322834646}, "観客側": {"left": 4.755054680664917, "top": 6.488813429571303}, "上手側": {"left": 9.40021653543307, "top": 4.160146544181977}, "下手側": {"left": 0.16363407699037621, "top": 4.126766185476815}}, "slots": [{"size_type": "1.6", "label_lines": ["長胴3"], "left": 3.603, "top": 4.75, "width": 0.757, "height": 1.165}, {"size_type": "1.６", "label_lines": ["長胴4"], "left": 2.19, "top": 4.75, "width": 0.757, "height": 1.11}, {"size_type": "1.6", "label_lines": ["長胴2"], "left": 6.43, "top": 4.75, "width": 0.757, "height": 1.291}, {"size_type": "1.6", "label_lines": ["長胴1"], "left": 7.843, "top": 4.75, "width": 0.757, "height": 1.118}, {"size_type": "平", "label_lines": ["長胴3"], "left": 3.264, "top": 3.02, "width": 0.757, "height": 1.137}, {"size_type": "平", "label_lines": ["長胴4\n大2"], "left": 1.52, "top": 3.02, "width": 0.749, "height": 1.315}, {"size_type": "平", "label_lines": ["長胴2"], "left": 6.769, "top": 3.02, "width": 0.757, "height": 1.284}, {"size_type": "平", "label_lines": ["長胴1 \n大１"], "left": 8.521, "top": 3.02, "width": 0.757, "height": 1.482}, {"size_type": "締", "label_lines": ["締"], "left": 5.016, "top": 3.02, "width": 0.757, "height": 1.106}, {"size_type": "1.6", "label_lines": ["上手"], "left": 5.016, "top": 4.75, "width": 0.757, "height": 1.165}]}, "春の深山": {"stage_rect": {"left": 1.182795275590551, "top": 2.4623654855643045, "width": 8.424667541557305, "height": 3.827957130358705}, "orient_labels": {"舞台奥": {"left": 4.626022528433945, "top": 1.7923917322834646}, "観客側": {"left": 4.755054680664917, "top": 6.488813429571303}, "上手側": {"left": 9.40021653543307, "top": 4.160146544181977}, "下手側": {"left": 0.16363407699037621, "top": 4.126766185476815}}, "slots": [{"size_type": "1.6", "label_lines": ["長胴1"], "left": 3.603, "top": 4.75, "width": 0.757, "height": 1.097}, {"size_type": "1.６", "label_lines": ["長胴1"], "left": 2.19, "top": 4.75, "width": 0.757, "height": 1.11}, {"size_type": "1.6", "label_lines": ["長胴2"], "left": 6.43, "top": 4.75, "width": 0.757, "height": 1.291}, {"size_type": "1.6", "label_lines": ["長胴2"], "left": 7.843, "top": 4.75, "width": 0.757, "height": 1.118}, {"size_type": "平", "label_lines": ["長胴2"], "left": 3.264, "top": 3.02, "width": 0.757, "height": 1.137}, {"size_type": "平", "label_lines": ["長胴1"], "left": 1.52, "top": 3.02, "width": 0.749, "height": 1.13}, {"size_type": "平", "label_lines": ["長胴2"], "left": 6.769, "top": 3.02, "width": 0.757, "height": 1.284}, {"size_type": "平", "label_lines": ["長胴2"], "left": 8.521, "top": 3.02, "width": 0.757, "height": 1.297}, {"size_type": "締", "label_lines": ["締"], "left": 5.016, "top": 3.02, "width": 0.757, "height": 1.106}, {"size_type": "1.6", "label_lines": ["長胴1"], "left": 5.016, "top": 4.75, "width": 0.757, "height": 1.282}]}};
+const FF_SONG_ORDER_DEFAULT = ['神無月','炎','絆','朱花','晴れ','Festa','凱風','ムスビバ','春の深山'];
+const FF_SLIDE_W = 10.8333, FF_SLIDE_H = 7.5;
+const FF_SURNAME = {
+  '三村 善信':'三村','東 由裕':'東','塚本佳織':'塚本','角田直大':'角田',
+  '桐生 恵美子':'桐生','永田 花菜子':'永田','櫻庭春子':'櫻庭','山崎':'山崎',
+  '古和田正人':'古和田','松川淳子':'松川',
+};
+function ffDisplayName(full) { return FF_SURNAME[full] || full.split(' ')[0]; }
+
+// ── Hungarian algorithm (Kuhn-Munkres), minimization, square matrix ──
+function ffHungarian(costMatrix) {
+  const n = costMatrix.length;
+  const INF = Infinity;
+  const u = new Array(n + 1).fill(0);
+  const v = new Array(n + 1).fill(0);
+  const p = new Array(n + 1).fill(0);
+  const way = new Array(n + 1).fill(0);
+  for (let i = 1; i <= n; i++) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = new Array(n + 1).fill(INF);
+    const used = new Array(n + 1).fill(false);
+    do {
+      used[j0] = true;
+      const i0 = p[j0];
+      let delta = INF, j1 = -1;
+      for (let j = 1; j <= n; j++) {
+        if (!used[j]) {
+          const cur = costMatrix[i0 - 1][j - 1] - u[i0] - v[j];
+          if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+          if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+        }
+      }
+      for (let j = 0; j <= n; j++) {
+        if (used[j]) { u[p[j]] += delta; v[j] -= delta; }
+        else { minv[j] -= delta; }
+      }
+      j0 = j1;
+    } while (p[j0] !== 0);
+    do { const j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0 !== 0);
+  }
+  const rowToCol = new Array(n).fill(-1);
+  for (let j = 1; j <= n; j++) if (p[j] !== 0) rowToCol[p[j] - 1] = j - 1;
+  return rowToCol;
+}
+
+const FF_LEVEL = { '◎': 2, '〇': 1, '': 0 };
+function ffNormalizeLabel(s) {
+  return s.replace(/べ/g, 'ベ').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+}
+function ffFlattenLabelLines(lines) {
+  const out = [];
+  (lines || []).forEach(line => {
+    line.split('\n').forEach(piece => { const t = piece.trim(); if (t) out.push(t); });
+  });
+  return out;
+}
+function ffGetSlots(song) {
+  const labelMap = {};
+  (MASTER.song_parts[song] || []).forEach(p => { labelMap[p.label] = p.full; });
+  const layout = FF_LAYOUTS[song];
+  if (!layout) return [];
+  return layout.slots.map(raw => {
+    const tokens = ffFlattenLabelLines(raw.label_lines);
+    const isShime = tokens.length === 1 && tokens[0] === '締';
+    let resolved = tokens.length > 0;
+    const masterKeys = tokens.map(tok => {
+      const key = labelMap[tok] !== undefined ? labelMap[tok] : labelMap[ffNormalizeLabel(tok)];
+      if (key === undefined) resolved = false;
+      return key === undefined ? null : key;
+    });
+    return { tokens, masterKeys, resolved, isShime, raw };
+  }).filter(s => s.tokens.length > 0);
+}
+function ffSlotLevel(member, masterKeys) {
+  let m = null;
+  for (const k of masterKeys) {
+    const v = member.skills[k] || '';
+    const lvl = FF_LEVEL[v] || 0;
+    m = (m === null) ? lvl : Math.min(m, lvl);
+  }
+  return m === null ? 0 : m;
+}
+function ffAssignSong(song, participants, globalLoad, warnings) {
+  const slots = ffGetSlots(song);
+  const unresolved = slots.filter(s => !s.resolved);
+  if (unresolved.length) {
+    warnings.push(`「${song}」はテンプレートの表記とスキルデータのラベルが一致しないため自動割り当てできません（${[...new Set(unresolved.map(s=>s.tokens.join('/')))].join('、')}）。手動で入力してください。`);
+  }
+  const assignable = slots.filter(s => s.resolved && !s.isShime);
+  const nM = participants.length, nS = assignable.length;
+  const size = nM + nS;
+  const INVALID = 100000, NIJU = -1000, MARU = -500, LOAD_EPS = 1;
+  const cost = Array.from({ length: size }, () => new Array(size).fill(0));
+  for (let i = 0; i < size; i++) {
+    for (let j = 0; j < size; j++) {
+      if (i < nM && j < nS) {
+        const m = participants[i];
+        const lvl = ffSlotLevel(m, assignable[j].masterKeys);
+        cost[i][j] = lvl === 2 ? NIJU + globalLoad[m.name] * LOAD_EPS
+                   : lvl === 1 ? MARU + globalLoad[m.name] * LOAD_EPS
+                   : INVALID;
+      } else if (i < nM && j >= nS) {
+        cost[i][j] = 0;
+      } else {
+        cost[i][j] = 0;
+      }
+    }
+  }
+  const rowToCol = size > 0 ? ffHungarian(cost) : [];
+  const assignedNames = new Array(nS).fill(null);
+  for (let i = 0; i < nM; i++) {
+    const j = rowToCol[i];
+    if (j !== undefined && j < nS && cost[i][j] < INVALID) {
+      assignedNames[j] = participants[i].name;
+      globalLoad[participants[i].name] += 1;
+    }
+  }
+  assignable.forEach((slot, j) => { slot.assigned = assignedNames[j]; });
+  slots.forEach(slot => { if (slot.isShime || !slot.resolved) slot.assigned = null; });
+  return slots;
+}
+
+// ── 状態 ──
+let ffOrder = [];
+let ffMembers = new Set(MASTER.members.map(m => m.name));
+let ffResults = null; // { song: slots[] } after generation
+let ffWarnings = [];
+
+function ffToggleSong(song) {
+  const idx = ffOrder.indexOf(song);
+  if (idx >= 0) ffOrder.splice(idx, 1);
+  else ffOrder.push(song);
+  ffResults = null;
+  renderFormation();
+}
+function ffMoveSong(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= ffOrder.length) return;
+  [ffOrder[i], ffOrder[j]] = [ffOrder[j], ffOrder[i]];
+  renderFormation();
+}
+function ffRemoveSong(i) {
+  ffOrder.splice(i, 1);
+  ffResults = null;
+  renderFormation();
+}
+function ffToggleMember(name) {
+  if (ffMembers.has(name)) ffMembers.delete(name); else ffMembers.add(name);
+  ffResults = null;
+  renderFormation();
+}
+function ffGenerate() {
+  if (ffOrder.length === 0) { toast('曲を選択してください'); return; }
+  if (ffMembers.size === 0) { toast('参加メンバーを選択してください'); return; }
+  const participants = MASTER.members.filter(m => ffMembers.has(m.name));
+  const globalLoad = {}; participants.forEach(m => globalLoad[m.name] = 0);
+  const warnings = [];
+  const results = {};
+  ffOrder.forEach(song => { results[song] = ffAssignSong(song, participants, globalLoad, warnings); });
+  ffResults = results;
+  ffWarnings = warnings;
+  renderFormation();
+}
+
+function ffStageHtml(song, slots) {
+  const layout = FF_LAYOUTS[song];
+  if (!layout) return '<div style="padding:16px;color:var(--text3);font-size:13px">このテンプレートには対応していません。</div>';
+  const r = layout.stage_rect;
+  const pct = (v, total) => (v / total * 100).toFixed(2) + '%';
+  let html = `<div class="stage-diagram-wrap"><div class="stage-diagram">`;
+  html += `<div class="stage-border" style="left:${pct(r.left, FF_SLIDE_W)};top:${pct(r.top, FF_SLIDE_H)};width:${pct(r.width, FF_SLIDE_W)};height:${pct(r.height, FF_SLIDE_H)}"></div>`;
+  Object.entries(layout.orient_labels || {}).forEach(([label, pos]) => {
+    html += `<div class="stage-orient" style="left:${pct(pos.left, FF_SLIDE_W)};top:${pct(pos.top, FF_SLIDE_H)}">${label}</div>`;
+  });
+  slots.forEach(slot => {
+    const raw = slot.raw;
+    const cx = raw.left + raw.width / 2;
+    const cyCircle = raw.top + raw.width * 0.42;
+    const name = slot.isShime ? '（講師）' : (slot.assigned ? ffDisplayName(slot.assigned) : (slot.resolved ? '－' : '？'));
+    const cls = slot.isShime ? 'shime' : (slot.assigned ? 'filled' : (slot.resolved ? 'empty' : 'unresolved'));
+    html += `<div class="stage-slot ${cls}" style="left:${pct(raw.left, FF_SLIDE_W)};top:${pct(raw.top, FF_SLIDE_H)};width:${pct(raw.width, FF_SLIDE_W)}">
+      <div class="stage-slot-circle">${slot.raw.size_type || ''}</div>
+      <div class="stage-slot-name">${name}</div>
+      <div class="stage-slot-label">${slot.tokens.join(' / ')}</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+  return html;
+}
+
+function renderFormation() {
+  document.querySelector('.legend-bar').style.display = 'none';
+  let html = `<div class="formation-section">`;
+
+  html += `<div class="formation-group-title">① 演奏する曲を選択（タップで演奏順に追加）</div>`;
+  html += `<div class="song-picker-list">`;
+  FF_SONG_ORDER_DEFAULT.forEach(song => {
+    const sel = ffOrder.includes(song);
+    html += `<button class="song-chip${sel ? ' selected' : ''}" onclick="ffToggleSong('${song}')">${song}</button>`;
+  });
+  html += `</div>`;
+
+  if (ffOrder.length) {
+    html += `<div class="formation-group-title">② 演奏順</div>`;
+    html += `<div class="order-list">`;
+    ffOrder.forEach((song, i) => {
+      html += `<div class="order-item">
+        <div class="order-num">${i + 1}</div>
+        <div class="order-song">${song}</div>
+        <div class="order-controls">
+          <button onclick="ffMoveSong(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button onclick="ffMoveSong(${i},1)" ${i === ffOrder.length - 1 ? 'disabled' : ''}>↓</button>
+          <button onclick="ffRemoveSong(${i})">✕</button>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="formation-group-title">③ 参加メンバーを選択</div>`;
+  html += `<div class="member-picker-grid">`;
+  MASTER.members.forEach(m => {
+    const sel = ffMembers.has(m.name);
+    html += `<button class="member-chip${sel ? ' selected' : ''}" onclick="ffToggleMember('${m.name}')">${ffDisplayName(m.name)}</button>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="formation-actions">
+    <button class="btn btn-save" onclick="ffGenerate()">フォーメーションを生成</button>
+  </div>`;
+
+  if (ffResults) {
+    if (ffWarnings.length) {
+      html += `<div class="warning-box">` + ffWarnings.map(w => `<div>⚠ ${w}</div>`).join('') + `</div>`;
+    }
+    html += `<div class="formation-actions"><button class="btn btn-save" onclick="ffExportPPTX()">📥 PowerPointをダウンロード</button></div>`;
+    ffOrder.forEach(song => {
+      const slots = ffResults[song];
+      const filled = slots.filter(s => s.assigned).length;
+      const assignableCount = slots.filter(s => !s.isShime && s.resolved).length;
+      html += `<div class="song-card" style="margin-top:10px">
+        <div class="song-card-header"><div class="song-card-title">${song}</div><div class="song-card-count">${filled}/${assignableCount} 割当</div></div>
+        <div style="padding:10px 14px">${ffStageHtml(song, slots)}</div>
+      </div>`;
+    });
+  }
+
+  html += `</div>`;
+  document.getElementById('pageContent').innerHTML = html;
+}
+
+async function ffExportPPTX() {
+  if (!ffResults) { toast('先に生成してください'); return; }
+  if (typeof PptxGenJS === 'undefined') { toast('PowerPoint出力ライブラリの読み込みに失敗しました'); return; }
+  const pptx = new PptxGenJS();
+  pptx.defineLayout({ name: 'CUSTOM', width: FF_SLIDE_W, height: FF_SLIDE_H });
+  pptx.layout = 'CUSTOM';
+
+  const titleSlide = pptx.addSlide();
+  titleSlide.background = { color: '1C4E80' };
+  titleSlide.addText('太鼓とメンバーの配置', { x: 0.6, y: 2.8, w: 9.6, h: 1, fontSize: 32, bold: true, color: 'FFFFFF', fontFace: 'Meiryo UI' });
+  titleSlide.addText('（イベント名）', { x: 0.6, y: 3.7, w: 9.6, h: 0.6, fontSize: 18, color: 'DDDDDD', fontFace: 'Meiryo UI' });
+
+  ffOrder.forEach(song => {
+    const layout = FF_LAYOUTS[song];
+    const slots = ffResults[song];
+    const slide = pptx.addSlide();
+    slide.background = { color: 'FFFFFF' };
+    slide.addText(song, { x: 0.5, y: 0.25, w: 3, h: 0.5, fontSize: 22, bold: true, color: 'FFFFFF', fill: { color: 'C0392B' }, align: 'center', valign: 'middle', fontFace: 'Meiryo UI' });
+    if (layout) {
+      const r = layout.stage_rect;
+      slide.addShape('rect', { x: r.left, y: r.top, w: r.width, h: r.height, fill: { color: 'FFFFFF' }, line: { color: '2C5F6F', width: 1 } });
+      Object.entries(layout.orient_labels || {}).forEach(([label, pos]) => {
+        slide.addText(label, { x: pos.left, y: pos.top, w: 1.2, h: 0.3, fontSize: 12, align: 'center', fontFace: 'Meiryo UI', color: '333333' });
+      });
+      slots.forEach(slot => {
+        const raw = slot.raw;
+        const cx = raw.left + raw.width / 2;
+        const circleD = 0.55;
+        slide.addShape('ellipse', { x: cx - circleD / 2, y: raw.top, w: circleD, h: circleD, fill: { color: 'FFFFFF' }, line: { color: '000000', width: 1.25 } });
+        slide.addText(raw.size_type || '', { x: cx - circleD / 2, y: raw.top, w: circleD, h: circleD, fontSize: 10, align: 'center', valign: 'middle', fontFace: 'Meiryo UI', color: '333333' });
+        const nameW = raw.width, nameH = 0.32, nameY = raw.top + circleD - 0.06;
+        const name = slot.isShime ? '講師' : (slot.assigned ? ffDisplayName(slot.assigned) : (slot.resolved ? '－' : '？'));
+        slide.addShape('rect', { x: raw.left, y: nameY, w: nameW, h: nameH, fill: { color: '3F6E96' }, line: { type: 'none' } });
+        slide.addText(name, { x: raw.left, y: nameY, w: nameW, h: nameH, fontSize: 10, align: 'center', valign: 'middle', color: 'FFFFFF', fontFace: 'Meiryo UI', margin: 0 });
+        slide.addText(slot.tokens.join('\n'), { x: raw.left - 0.1, y: nameY + nameH + 0.03, w: nameW + 0.2, h: 0.5, fontSize: 11, align: 'center', fontFace: 'Meiryo UI', color: '222222' });
+      });
+    }
+  });
+
+  await pptx.writeFile({ fileName: '太鼓とメンバーの配置_本番用.pptx' });
+}
+
 
 // 初期化
 renderTabs();
