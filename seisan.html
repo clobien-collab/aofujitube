@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アースセレブレーション旅行費用精算アプリ</title>
+  <style>
+    :root {
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --bg: #0b0f19;
+      --card-bg: #1e293b;
+      --card-inner: #0f172a;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --danger: #f87171;
+      --danger-bg: #450a0a;
+      --success: #34d399;
+      --accent-badge: #fbbf24;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 24px 16px; line-height: 1.5; }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; text-align: center; margin-bottom: 20px; color: var(--text); }
+    
+    /* タブナビゲーション */
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; background: #1e293b; padding: 6px; border-radius: 10px; border: 1px solid var(--border); }
+    .tab-btn { flex: 1; min-width: 80px; padding: 10px 12px; border: none; background: transparent; border-radius: 6px; font-weight: bold; cursor: pointer; color: var(--text-muted); transition: 0.2s; }
+    .tab-btn.active { background: #334155; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .tab-btn.result-tab { background: #0f172a; color: #cbd5e1; }
+    .tab-btn.result-tab.active { background: var(--primary); color: #0f172a; }
+
+    /* カード・コンテンツ */
+    .card { background: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); border: 1px solid var(--border); margin-bottom: 20px; }
+    .card-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 16px; border-left: 4px solid var(--primary); padding-left: 10px; display: flex; justify-content: space-between; align-items: center; }
+    
+    /* 入力行 */
+    .expense-row { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; background: var(--card-inner); }
+    .row-main { display: grid; grid-template-columns: 2fr 1.2fr auto; gap: 12px; align-items: center; }
+    .input-group { display: flex; flex-direction: column; gap: 4px; }
+    .input-group label { font-size: 0.75rem; color: var(--text-muted); font-weight: bold; }
+    input[type="text"], input[type="number"] { width: 100%; padding: 8px 10px; background: #1e293b; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; color: #fff; }
+    input[type="text"]:focus, input[type="number"]:focus { outline: none; border-color: var(--primary); }
+    
+    /* 傾斜配分設定エリア */
+    .ratio-section { background: #172554; padding: 12px 14px; border-radius: 6px; border: 1px solid #1e40af; }
+    .ratio-title { font-size: 0.8rem; font-weight: bold; color: var(--primary); margin-bottom: 8px; }
+    .ratio-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .ratio-item { display: flex; align-items: center; gap: 6px; background: #0f172a; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.85rem; color: #e2e8f0; }
+    .ratio-input { width: 54px !important; padding: 3px 6px !important; text-align: center; }
+
+    /* ボタン */
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.9rem; }
+    .btn-primary { background: var(--primary); color: #0f172a; }
+    .btn-secondary { background: #334155; color: var(--primary); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #475569; }
+    .btn-danger { background: transparent; color: var(--danger); border: 1px solid #7f1d1d; }
+    .btn-danger:hover { background: var(--danger-bg); }
+
+    /* 精算結果スタイル */
+    .summary-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: var(--card-inner); border: 1px solid var(--border); padding: 16px; border-radius: 8px; text-align: center; }
+    .stat-card .label { font-size: 0.85rem; color: var(--text-muted); }
+    .stat-card .value { font-size: 1.4rem; font-weight: bold; color: var(--primary); margin-top: 4px; }
+
+    .transfer-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+    .transfer-item { display: flex; align-items: center; justify-content: space-between; background: var(--card-inner); padding: 14px 18px; border-radius: 8px; border-left: 5px solid var(--success); border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .transfer-text { font-size: 1rem; color: #f1f5f9; }
+    .transfer-amount { font-weight: bold; font-size: 1.2rem; color: #34d399; }
+
+    .badge-round { font-size: 0.75rem; background: #451a03; color: var(--accent-badge); padding: 3px 8px; border-radius: 4px; border: 1px solid #78350f; margin-left: 6px; }
+
+    .hidden { display: none; }
+    @media (max-width: 640px) {
+      .row-main { grid-template-columns: 1fr; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🌴 アースセレブレーション2026旅行費用 精算アプリ</h1>
+
+  <!-- タブ -->
+  <div class="tabs" id="tabContainer"></div>
+
+  <!-- 各メンバーの入力パネル -->
+  <div id="inputPanels"></div>
+
+  <!-- 精算結果パネル -->
+  <div id="resultPanel" class="card hidden">
+    <div class="card-title">
+      <span>📊 精算結果・送金一覧</span>
+      <span class="badge-round">※10円以下四捨五入（100円単位）</span>
+    </div>
+    
+    <div class="summary-box">
+      <div class="stat-card">
+        <div class="label">旅行費用 総額 (税込)</div>
+        <div class="value" id="totalAmount">¥0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">登録支払件数</div>
+        <div class="value" id="totalCount">0 件</div>
+      </div>
+    </div>
+
+    <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--primary);">💸 送金指示（誰が → 誰に）</h3>
+    <div id="transferContainer" class="transfer-list"></div>
+
+    <h3 style="font-size: 1rem; margin-top: 24px; margin-bottom: 10px; color: var(--primary);">📋 メンバー別 収支内訳</h3>
+    <div id="memberBreakdown"></div>
+  </div>
+</div>
+
+<script>
+  const MEMBERS = ['三村', '角田', '東', '松川', '桐生'];
+  
+  const expenses = {
+    '三村': [],
+    '角田': [],
+    '東': [],
+    '松川': [],
+    '桐生': []
+  };
+
+  let currentTab = '三村';
+
+  function init() {
+    renderTabs();
+    renderPanels();
+    MEMBERS.forEach(m => addExpenseRow(m));
+  }
+
+  function renderTabs() {
+    const container = document.getElementById('tabContainer');
+    container.innerHTML = '';
+    
+    MEMBERS.forEach(m => {
+      const btn = document.createElement('button');
+      btn.className = `tab-btn ${m === currentTab ? 'active' : ''}`;
+      btn.textContent = `${m} の立替`;
+      btn.onclick = () => switchTab(m);
+      container.appendChild(btn);
+    });
+
+    const resBtn = document.createElement('button');
+    resBtn.className = `tab-btn result-tab ${currentTab === 'RESULT' ? 'active' : ''}`;
+    resBtn.textContent = '📊 精算画面';
+    resBtn.onclick = () => switchTab('RESULT');
+    container.appendChild(resBtn);
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+    renderTabs();
+
+    MEMBERS.forEach(m => {
+      const panel = document.getElementById(`panel-${m}`);
+      if (panel) panel.classList.toggle('hidden', m !== currentTab);
+    });
+
+    const resultPanel = document.getElementById('resultPanel');
+    if (tab === 'RESULT') {
+      resultPanel.classList.remove('hidden');
+      calculateSettlement();
+    } else {
+      resultPanel.classList.add('hidden');
+    }
+  }
+
+  function renderPanels() {
+    const container = document.getElementById('inputPanels');
+    container.innerHTML = '';
+
+    MEMBERS.forEach(m => {
+      const panel = document.createElement('div');
+      panel.id = `panel-${m}`;
+      panel.className = `card ${m === currentTab ? '' : 'hidden'}`;
+      panel.innerHTML = `
+        <div class="card-title">${m} さんの支払い入力</div>
+        <div id="list-${m}"></div>
+        <button class="btn btn-secondary" onclick="addExpenseRow('${m}')">＋ 支払いを追加</button>
+      `;
+      container.appendChild(panel);
+    });
+  }
+
+  function roundToHundred(val) {
+    return Math.round(val / 100) * 100;
+  }
+
+  function addExpenseRow(payer) {
+    const id = Date.now() + Math.random();
+    const ratios = {};
+    MEMBERS.forEach(m => { ratios[m] = 1.0; });
+
+    const item = { id, title: '', amount: 0, ratios };
+    expenses[payer].push(item);
+
+    const listContainer = document.getElementById(`list-${payer}`);
+    const row = document.createElement('div');
+    row.className = 'expense-row';
+    row.id = `row-${id}`;
+
+    const ratioHtml = MEMBERS.map(m => `
+      <div class="ratio-item">
+        <label style="cursor:pointer;">
+          <input type="checkbox" id="chk-${id}-${m}" checked onchange="toggleMember('${payer}', ${id}, '${m}', this.checked)">
+          ${m}
+        </label>
+        <span style="font-size:0.75rem; color:#94a3b8;">比率:</span>
+        <input type="number" step="0.1" min="0" value="1.0" class="ratio-input" id="ratio-${id}-${m}" oninput="updateRatio('${payer}', ${id}, '${m}', this.value)">
+      </div>
+    `).join('');
+
+    row.innerHTML = `
+      <div class="row-main">
+        <div class="input-group">
+          <label>費目</label>
+          <input type="text" placeholder="例: レンタカー代、夕食、お酒代" oninput="updateField('${payer}', ${id}, 'title', this.value)">
+        </div>
+        <div class="input-group">
+          <label>金額 (税込)</label>
+          <input type="number" min="0" placeholder="0" oninput="updateField('${payer}', ${id}, 'amount', Number(this.value))">
+        </div>
+        <button class="btn btn-danger" onclick="removeExpenseRow('${payer}', ${id})" title="行を削除">✕ 削除</button>
+      </div>
+
+      <div class="ratio-section">
+        <div class="ratio-title">⚖️ 対象メンバーと傾斜配分比率（均等=1.0、多め=1.5、少なめ=0.5、対象外=チェックOFF）</div>
+        <div class="ratio-grid">${ratioHtml}</div>
+      </div>
+    `;
+    listContainer.appendChild(row);
+  }
+
+  function updateField(payer, id, field, value) {
+    const item = expenses[payer].find(x => x.id === id);
+    if (item) item[field] = value;
+  }
+
+  function updateRatio(payer, id, member, val) {
+    const item = expenses[payer].find(x => x.id === id);
+    if (item) {
+      item.ratios[member] = Math.max(0, parseFloat(val) || 0);
+    }
+  }
+
+  function toggleMember(payer, id, member, isChecked) {
+    const input = document.getElementById(`ratio-${id}-${member}`);
+    if (isChecked) {
+      input.disabled = false;
+      if (parseFloat(input.value) === 0) input.value = "1.0";
+      updateRatio(payer, id, member, input.value);
+    } else {
+      input.disabled = true;
+      updateRatio(payer, id, member, 0);
+    }
+  }
+
+  function removeExpenseRow(payer, id) {
+    expenses[payer] = expenses[payer].filter(x => x.id !== id);
+    const elem = document.getElementById(`row-${id}`);
+    if (elem) elem.remove();
+  }
+
+  function calculateSettlement() {
+    let totalSpend = 0;
+    let validCount = 0;
+    
+    const paidTotal = {};
+    const costTotal = {};
+    const rawBalance = {};
+
+    MEMBERS.forEach(m => {
+      paidTotal[m] = 0;
+      costTotal[m] = 0;
+      rawBalance[m] = 0;
+    });
+
+    MEMBERS.forEach(payer => {
+      expenses[payer].forEach(item => {
+        const amt = Number(item.amount) || 0;
+        if (amt > 0) {
+          let totalWeight = 0;
+          MEMBERS.forEach(m => {
+            totalWeight += (item.ratios[m] || 0);
+          });
+
+          if (totalWeight > 0) {
+            totalSpend += amt;
+            validCount++;
+            paidTotal[payer] += amt;
+
+            MEMBERS.forEach(m => {
+              const weight = item.ratios[m] || 0;
+              if (weight > 0) {
+                const share = amt * (weight / totalWeight);
+                costTotal[m] += share;
+              }
+            });
+          }
+        }
+      });
+    });
+
+    const roundedBalance = {};
+    MEMBERS.forEach(m => {
+      rawBalance[m] = paidTotal[m] - costTotal[m];
+      roundedBalance[m] = roundToHundred(rawBalance[m]);
+    });
+
+    document.getElementById('totalAmount').textContent = `¥${Math.round(totalSpend).toLocaleString()}`;
+    document.getElementById('totalCount').textContent = `${validCount} 件`;
+
+    const debtors = [];
+    const creditors = [];
+
+    MEMBERS.forEach(m => {
+      const net = roundedBalance[m];
+      if (net < 0) debtors.push({ name: m, amount: -net });
+      else if (net > 0) creditors.push({ name: m, amount: net });
+    });
+
+    const transfers = [];
+    let dIdx = 0, cIdx = 0;
+
+    while (dIdx < debtors.length && cIdx < creditors.length) {
+      const debtor = debtors[dIdx];
+      const creditor = creditors[cIdx];
+      const pay = Math.min(debtor.amount, creditor.amount);
+
+      if (pay > 0) {
+        transfers.push({ from: debtor.name, to: creditor.name, amount: pay });
+      }
+
+      debtor.amount -= pay;
+      creditor.amount -= pay;
+
+      if (debtor.amount <= 0) dIdx++;
+      if (creditor.amount <= 0) cIdx++;
+    }
+
+    const transferContainer = document.getElementById('transferContainer');
+    transferContainer.innerHTML = '';
+
+    if (transfers.length === 0) {
+      transferContainer.innerHTML = '<div style="color: var(--text-muted); padding: 10px;">精算が必要な差額はありません。</div>';
+    } else {
+      transfers.forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'transfer-item';
+        item.innerHTML = `
+          <div class="transfer-text">
+            <strong style="color:#38bdf8;">${t.from}</strong> さん ➔ <strong style="color:#34d399;">${t.to}</strong> さん へ
+          </div>
+          <div class="transfer-amount">¥${t.amount.toLocaleString()}</div>
+        `;
+        transferContainer.appendChild(item);
+      });
+    }
+
+    const breakdown = document.getElementById('memberBreakdown');
+    breakdown.innerHTML = `
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 8px;">
+        <thead>
+          <tr style="background: var(--card-inner); text-align: left;">
+            <th style="padding: 10px; border: 1px solid var(--border);">メンバー</th>
+            <th style="padding: 10px; border: 1px solid var(--border);">立替総額</th>
+            <th style="padding: 10px; border: 1px solid var(--border);">計算上の負担額</th>
+            <th style="padding: 10px; border: 1px solid var(--border);">精算額 (10円四捨五入)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${MEMBERS.map(m => {
+            const netRounded = roundedBalance[m];
+            const color = netRounded > 0 ? '#34d399' : (netRounded < 0 ? '#f87171' : '#94a3b8');
+            const statusText = netRounded > 0 ? `受取: ¥${netRounded.toLocaleString()}` : (netRounded < 0 ? `支払: ¥${(-netRounded).toLocaleString()}` : '±¥0');
+
+            return `
+              <tr>
+                <td style="padding: 10px; border: 1px solid var(--border); font-weight: bold; color: #fff;">${m}</td>
+                <td style="padding: 10px; border: 1px solid var(--border);">¥${Math.round(paidTotal[m]).toLocaleString()}</td>
+                <td style="padding: 10px; border: 1px solid var(--border);">¥${Math.round(costTotal[m]).toLocaleString()}</td>
+                <td style="padding: 10px; border: 1px solid var(--border); font-weight: bold; color: ${color};">
+                  ${statusText}
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  window.onload = init;
+</script>
+</body>
+</html>
