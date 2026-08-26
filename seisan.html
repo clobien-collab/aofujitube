@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>旅行費用 精算アプリ (LINE共有版)</title>
+  <title>旅行費用 精算アプリ (LINE共有・超短縮版)</title>
+  <!-- URL圧縮用ライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
   <style>
     :root {
       --primary: #38bdf8;
@@ -23,7 +25,7 @@
     .container { max-width: 800px; margin: 0 auto; }
     h1 { font-size: 1.3rem; text-align: center; margin-bottom: 8px; }
     
-    /* LINE共有アクションバー */
+    /* アクションバー */
     .share-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
     .btn-line { background: var(--line-green); color: #fff; }
     .btn-copy { background: #334155; color: #fff; border: 1px solid var(--border); }
@@ -88,9 +90,9 @@
 <div class="container">
   <h1>🌴 旅行費用 精算アプリ</h1>
 
-  <!-- 共有ボタンバー -->
+  <!-- 共有バー -->
   <div class="share-bar">
-    <button class="btn btn-line" onclick="shareToLine()">💬 LINEに送る</button>
+    <button class="btn btn-line" onclick="shareToLine()">💬 LINEで共有</button>
     <button class="btn btn-copy" onclick="copyShareUrl()">📋 URLをコピー</button>
   </div>
 
@@ -140,58 +142,97 @@
 
   let currentTab = '三村';
 
-  // URLパラメータの生成（UTF-8 & Base64）
+  // データを極小フォーマットへ圧縮してURL生成
   function generateShareUrl() {
-    const jsonStr = JSON.stringify(expenses);
-    const encodedData = btoa(encodeURIComponent(jsonStr));
-    const baseUrl = window.location.href.split('#')[0];
-    return `${baseUrl}#data=${encodedData}`;
+    // 最小構造化: [payerIdx, title, amount, [ratios...]]
+    const compactData = [];
+    MEMBERS.forEach((m, pIdx) => {
+      expenses[m].forEach(item => {
+        if (item.amount > 0 || (item.title && item.title.trim() !== '')) {
+          const ratioArr = MEMBERS.map(target => item.ratios[target] !== undefined ? item.ratios[target] : 1.0);
+          compactData.push([pIdx, item.title || '', item.amount || 0, ratioArr]);
+        }
+      });
+    });
+
+    const jsonStr = JSON.stringify(compactData);
+    const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+    const baseUrl = window.location.origin + window.location.pathname;
+    return `${baseUrl}?d=${compressed}`;
   }
 
-  // URLパラメータからの復元
+  // URLからデータを解凍・復元
   function loadFromUrl() {
     try {
-      const hash = window.location.hash;
-      if (hash.startsWith('#data=')) {
-        const rawBase64 = hash.replace('#data=', '');
-        const jsonStr = decodeURIComponent(atob(rawBase64));
-        const parsed = JSON.parse(jsonStr);
-        if (parsed && typeof parsed === 'object') {
-          expenses = parsed;
-          MEMBERS.forEach(m => {
-            if (!Array.isArray(expenses[m])) expenses[m] = [];
+      const urlParams = new URLSearchParams(window.location.search);
+      let compressed = urlParams.get('d');
+      
+      // 旧ハッシュ形式のフォールバック
+      if (!compressed && window.location.hash.startsWith('#data=')) {
+        const raw = window.location.hash.replace('#data=', '');
+        const jsonStr = decodeURIComponent(atob(raw));
+        expenses = JSON.parse(jsonStr);
+        return true;
+      }
+
+      if (compressed) {
+        const jsonStr = LZString.decompressFromEncodedURIComponent(compressed);
+        if (jsonStr) {
+          const compactData = JSON.parse(jsonStr);
+          MEMBERS.forEach(m => { expenses[m] = []; });
+
+          compactData.forEach(row => {
+            const [pIdx, title, amount, ratioArr] = row;
+            const payer = MEMBERS[pIdx];
+            if (payer) {
+              const ratios = {};
+              MEMBERS.forEach((target, tIdx) => {
+                ratios[target] = (ratioArr && ratioArr[tIdx] !== undefined) ? ratioArr[tIdx] : 1.0;
+              });
+              expenses[payer].push({
+                id: Date.now() + Math.random(),
+                title,
+                amount,
+                ratios
+              });
+            }
           });
           return true;
         }
       }
     } catch (e) {
-      console.error('URLデータの解析に失敗しました', e);
+      console.error('復元エラー:', e);
     }
     return false;
   }
 
-  // LINE共有
+  // LINE共有（公式シェアプラグインURL使用で400エラー回避）
   function shareToLine() {
     const shareUrl = generateShareUrl();
-    const text = encodeURIComponent(`【旅行の立替精算データ】\n入力・更新した精算データです。リンクを開いて確認・追加入力してください。\n${shareUrl}`);
-    window.open(`https://line.me/R/msg/text/?${text}`, '_blank');
+    const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`;
+    window.open(lineUrl, '_blank');
   }
 
-  // URLコピー
+  // クリップボードコピー
   function copyShareUrl() {
     const shareUrl = generateShareUrl();
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      alert('共有用URLをクリップボードにコピーしました！\nLINEやチャットに貼り付けて送ってください。');
-    }).catch(() => {
-      prompt('以下のURLをコピーして共有してください：', shareUrl);
-    });
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert('【URLをコピーしました】\nLINEにそのまま貼り付けて送れます。');
+      }).catch(() => fallbackCopy(shareUrl));
+    } else {
+      fallbackCopy(shareUrl);
+    }
   }
 
-  // 入力変更時にURLハッシュを自動更新
-  function updateUrlHash() {
-    const jsonStr = JSON.stringify(expenses);
-    const encodedData = btoa(encodeURIComponent(jsonStr));
-    window.history.replaceState(null, '', `#data=${encodedData}`);
+  function fallbackCopy(text) {
+    const tempInput = document.createElement('textarea');
+    tempInput.value = text;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
+    alert('【URLをコピーしました】\nLINEにそのまま貼り付けて送れます。');
   }
 
   function init() {
@@ -279,7 +320,6 @@
     const item = { id, title: '', amount: 0, ratios };
     expenses[payer].push(item);
     renderRowElement(payer, item);
-    updateUrlHash();
   }
 
   function renderRowElement(payer, item) {
@@ -329,18 +369,12 @@
 
   function updateField(payer, id, field, value) {
     const item = expenses[payer].find(x => x.id === id);
-    if (item) {
-      item[field] = value;
-      updateUrlHash();
-    }
+    if (item) item[field] = value;
   }
 
   function updateRatio(payer, id, member, val) {
     const item = expenses[payer].find(x => x.id === id);
-    if (item) {
-      item.ratios[member] = Math.max(0, parseFloat(val) || 0);
-      updateUrlHash();
-    }
+    if (item) item.ratios[member] = Math.max(0, parseFloat(val) || 0);
   }
 
   function toggleMember(payer, id, member, isChecked) {
@@ -359,7 +393,6 @@
     expenses[payer] = expenses[payer].filter(x => x.id !== id);
     const elem = document.getElementById(`row-${id}`);
     if (elem) elem.remove();
-    updateUrlHash();
   }
 
   function calculateSettlement() {
