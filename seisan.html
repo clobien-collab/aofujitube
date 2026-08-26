@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>旅行費用 精算アプリ (LINE共有・超短縮版)</title>
-  <!-- URL圧縮用ライブラリ -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+  <title>旅行費用 共同精算 (リアルタイム同期)</title>
+  
+  <!-- Firebase SDK (v9 Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
   <style>
     :root {
       --primary: #38bdf8;
@@ -23,12 +26,16 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background-color: var(--bg); color: var(--text); padding: 16px 12px; line-height: 1.5; }
     .container { max-width: 800px; margin: 0 auto; }
-    h1 { font-size: 1.3rem; text-align: center; margin-bottom: 8px; }
+    h1 { font-size: 1.3rem; text-align: center; margin-bottom: 4px; }
     
-    /* アクションバー */
-    .share-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-    .btn-line { background: var(--line-green); color: #fff; }
-    .btn-copy { background: #334155; color: #fff; border: 1px solid var(--border); }
+    /* LINE共有 & 同期状態バー */
+    .sync-bar { display: flex; justify-content: space-between; align-items: center; background: #1e293b; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.8rem; }
+    .sync-status { display: flex; align-items: center; gap: 6px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+    .status-dot.syncing { background: var(--accent-badge); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .btn-line-share { width: 100%; background: var(--line-green); color: #fff; font-weight: bold; padding: 10px; border: none; border-radius: 8px; cursor: pointer; margin-bottom: 14px; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
     /* 横スクロールタブ */
     .tabs-wrapper { overflow-x: auto; margin-bottom: 16px; padding-bottom: 4px; }
@@ -88,13 +95,20 @@
 <body>
 
 <div class="container">
-  <h1>🌴 旅行費用 精算アプリ</h1>
+  <h1>🌴 旅行費用 クラウド共同精算</h1>
 
-  <!-- 共有バー -->
-  <div class="share-bar">
-    <button class="btn btn-line" onclick="shareToLine()">💬 LINEで共有</button>
-    <button class="btn btn-copy" onclick="copyShareUrl()">📋 URLをコピー</button>
+  <div class="sync-bar">
+    <div class="sync-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="syncText">クラウド同期中...</span>
+    </div>
+    <span style="color:var(--text-muted); font-size:0.75rem;">リアルタイム自動保存</span>
   </div>
+
+  <!-- 固定の短いURLをLINEで共有 -->
+  <button class="btn-line-share" onclick="shareAppUrl()">
+    💬 この精算ページをLINEで共有
+  </button>
 
   <div class="tabs-wrapper">
     <div class="tabs" id="tabContainer"></div>
@@ -130,6 +144,16 @@
 </div>
 
 <script>
+  // ★ ここに手順1で取得したFirebase設定を貼り付けます ★
+  const firebaseConfig = {
+    apiKey: "AIzaSyC_bKAUbGiiSAjgwBMGgbYm95w28SQZEc4",
+    authDomain: "earth--cerebration2026-seisan.firebaseapp.com",
+    projectId: "earth--cerebration2026-seisan",
+    storageBucket: "earth--cerebration2026-seisan.firebasestorage.app",
+    messagingSenderId: "97177992765",
+    appId: "1:97177992765:web:74c6d98e73464933ec7454"
+  };
+
   const MEMBERS = ['三村', '角田', '東', '松川', '桐生'];
   
   let expenses = {
@@ -141,117 +165,96 @@
   };
 
   let currentTab = '三村';
+  let db = null;
+  let isFirebaseReady = false;
+  let saveTimeout = null;
 
-  // データを極小フォーマットへ圧縮してURL生成
-  function generateShareUrl() {
-    // 最小構造化: [payerIdx, title, amount, [ratios...]]
-    const compactData = [];
-    MEMBERS.forEach((m, pIdx) => {
-      expenses[m].forEach(item => {
-        if (item.amount > 0 || (item.title && item.title.trim() !== '')) {
-          const ratioArr = MEMBERS.map(target => item.ratios[target] !== undefined ? item.ratios[target] : 1.0);
-          compactData.push([pIdx, item.title || '', item.amount || 0, ratioArr]);
-        }
-      });
-    });
+  // Firebase初期化 & リアルタイムリスナー設定
+  function initFirebase() {
+    if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('YOUR_')) {
+      try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        isFirebaseReady = true;
 
-    const jsonStr = JSON.stringify(compactData);
-    const compressed = LZString.compressToEncodedURIComponent(jsonStr);
-    const baseUrl = window.location.origin + window.location.pathname;
-    return `${baseUrl}?d=${compressed}`;
-  }
-
-  // URLからデータを解凍・復元
-  function loadFromUrl() {
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      let compressed = urlParams.get('d');
-      
-      // 旧ハッシュ形式のフォールバック
-      if (!compressed && window.location.hash.startsWith('#data=')) {
-        const raw = window.location.hash.replace('#data=', '');
-        const jsonStr = decodeURIComponent(atob(raw));
-        expenses = JSON.parse(jsonStr);
-        return true;
-      }
-
-      if (compressed) {
-        const jsonStr = LZString.decompressFromEncodedURIComponent(compressed);
-        if (jsonStr) {
-          const compactData = JSON.parse(jsonStr);
-          MEMBERS.forEach(m => { expenses[m] = []; });
-
-          compactData.forEach(row => {
-            const [pIdx, title, amount, ratioArr] = row;
-            const payer = MEMBERS[pIdx];
-            if (payer) {
-              const ratios = {};
-              MEMBERS.forEach((target, tIdx) => {
-                ratios[target] = (ratioArr && ratioArr[tIdx] !== undefined) ? ratioArr[tIdx] : 1.0;
+        // クラウドの変更をリアルタイム監視
+        db.collection('trips').doc('main_settlement').onSnapshot((doc) => {
+          if (doc.exists) {
+            const data = doc.data();
+            if (data && data.expenses) {
+              expenses = data.expenses;
+              MEMBERS.forEach(m => {
+                if (!Array.isArray(expenses[m])) expenses[m] = [];
               });
-              expenses[payer].push({
-                id: Date.now() + Math.random(),
-                title,
-                amount,
-                ratios
-              });
+              renderAllExpenses();
+              setSyncStatus(false, 'リアルタイム同期中');
             }
-          });
-          return true;
-        }
+          } else {
+            // 初期データ作成
+            saveToCloud();
+          }
+        }, (error) => {
+          console.error(error);
+          setSyncStatus(false, '同期エラー（ローカル動作中）');
+        });
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error('復元エラー:', e);
-    }
-    return false;
-  }
-
-  // LINE共有（公式シェアプラグインURL使用で400エラー回避）
-  function shareToLine() {
-    const shareUrl = generateShareUrl();
-    const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`;
-    window.open(lineUrl, '_blank');
-  }
-
-  // クリップボードコピー
-  function copyShareUrl() {
-    const shareUrl = generateShareUrl();
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        alert('【URLをコピーしました】\nLINEにそのまま貼り付けて送れます。');
-      }).catch(() => fallbackCopy(shareUrl));
     } else {
-      fallbackCopy(shareUrl);
+      setSyncStatus(false, '⚠️ Firebase未設定（ローカル保存中）');
+      loadFromLocal();
+      renderAllExpenses();
     }
   }
 
-  function fallbackCopy(text) {
-    const tempInput = document.createElement('textarea');
-    tempInput.value = text;
-    document.body.appendChild(tempInput);
-    tempInput.select();
-    document.execCommand('copy');
-    document.body.removeChild(tempInput);
-    alert('【URLをコピーしました】\nLINEにそのまま貼り付けて送れます。');
+  function queueSave() {
+    setSyncStatus(true, '保存中...');
+    localStorage.setItem('OFFLINE_BACKUP', JSON.stringify(expenses));
+
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      saveToCloud();
+    }, 600);
+  }
+
+  function saveToCloud() {
+    if (!isFirebaseReady || !db) return;
+    db.collection('trips').doc('main_settlement').set({
+      expenses: expenses,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+      setSyncStatus(false, 'クラウド保存完了');
+    }).catch((err) => {
+      console.error(err);
+      setSyncStatus(false, '保存失敗');
+    });
+  }
+
+  function loadFromLocal() {
+    const saved = localStorage.getItem('OFFLINE_BACKUP');
+    if (saved) {
+      try { expenses = JSON.parse(saved); } catch (e) {}
+    }
+  }
+
+  function setSyncStatus(isSyncing, text) {
+    const dot = document.getElementById('statusDot');
+    const label = document.getElementById('syncText');
+    if (dot) dot.className = `status-dot ${isSyncing ? 'syncing' : ''}`;
+    if (label) label.textContent = text;
+  }
+
+  // 短いページURLをそのままLINEで送信
+  function shareAppUrl() {
+    const pageUrl = window.location.origin + window.location.pathname;
+    const shareText = encodeURIComponent(`【旅行の精算ページ】\nリアルタイムで更新される精算ページです。こちらから各自入力してください：\n${pageUrl}`);
+    window.open(`https://line.me/R/msg/text/?${shareText}`, '_blank');
   }
 
   function init() {
     renderTabs();
     renderPanels();
-
-    const loaded = loadFromUrl();
-    let totalItems = 0;
-    MEMBERS.forEach(m => { totalItems += expenses[m].length; });
-
-    if (loaded && totalItems > 0) {
-      MEMBERS.forEach(m => {
-        const listContainer = document.getElementById(`list-${m}`);
-        listContainer.innerHTML = '';
-        expenses[m].forEach(item => renderRowElement(m, item));
-      });
-    } else {
-      MEMBERS.forEach(m => addExpenseRow(m));
-    }
+    initFirebase();
   }
 
   function renderTabs() {
@@ -308,11 +311,23 @@
     });
   }
 
+  function renderAllExpenses() {
+    MEMBERS.forEach(m => {
+      const listContainer = document.getElementById(`list-${m}`);
+      listContainer.innerHTML = '';
+      if (expenses[m].length === 0) {
+        addExpenseRow(m, false);
+      } else {
+        expenses[m].forEach(item => renderRowElement(m, item));
+      }
+    });
+  }
+
   function roundToHundred(val) {
     return Math.round(val / 100) * 100;
   }
 
-  function addExpenseRow(payer) {
+  function addExpenseRow(payer, shouldSave = true) {
     const id = Date.now() + Math.random();
     const ratios = {};
     MEMBERS.forEach(m => { ratios[m] = 1.0; });
@@ -320,6 +335,7 @@
     const item = { id, title: '', amount: 0, ratios };
     expenses[payer].push(item);
     renderRowElement(payer, item);
+    if (shouldSave) queueSave();
   }
 
   function renderRowElement(payer, item) {
@@ -369,12 +385,18 @@
 
   function updateField(payer, id, field, value) {
     const item = expenses[payer].find(x => x.id === id);
-    if (item) item[field] = value;
+    if (item) {
+      item[field] = value;
+      queueSave();
+    }
   }
 
   function updateRatio(payer, id, member, val) {
     const item = expenses[payer].find(x => x.id === id);
-    if (item) item.ratios[member] = Math.max(0, parseFloat(val) || 0);
+    if (item) {
+      item.ratios[member] = Math.max(0, parseFloat(val) || 0);
+      queueSave();
+    }
   }
 
   function toggleMember(payer, id, member, isChecked) {
@@ -393,6 +415,7 @@
     expenses[payer] = expenses[payer].filter(x => x.id !== id);
     const elem = document.getElementById(`row-${id}`);
     if (elem) elem.remove();
+    queueSave();
   }
 
   function calculateSettlement() {
