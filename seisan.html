@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>旅行費用 精算アプリ (自動保存対応)</title>
+  <title>旅行費用 精算アプリ (LINE共有版)</title>
   <style>
     :root {
       --primary: #38bdf8;
-      --primary-hover: #0284c7;
       --bg: #0b0f19;
       --card-bg: #1e293b;
       --card-inner: #0f172a;
@@ -15,58 +14,56 @@
       --text-muted: #94a3b8;
       --border: #334155;
       --danger: #f87171;
-      --danger-bg: #450a0a;
       --success: #34d399;
+      --line-green: #06c755;
       --accent-badge: #fbbf24;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background-color: var(--bg); color: var(--text); padding: 16px 12px; line-height: 1.5; }
     .container { max-width: 800px; margin: 0 auto; }
-    h1 { font-size: 1.3rem; text-align: center; margin-bottom: 4px; color: var(--text); }
-    .save-indicator { text-align: center; font-size: 0.75rem; color: var(--success); margin-bottom: 14px; }
+    h1 { font-size: 1.3rem; text-align: center; margin-bottom: 8px; }
     
+    /* LINE共有アクションバー */
+    .share-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .btn-line { background: var(--line-green); color: #fff; }
+    .btn-copy { background: #334155; color: #fff; border: 1px solid var(--border); }
+
     /* 横スクロールタブ */
-    .tabs-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 16px; padding-bottom: 4px; }
+    .tabs-wrapper { overflow-x: auto; margin-bottom: 16px; padding-bottom: 4px; }
     .tabs { display: flex; gap: 8px; width: max-content; min-width: 100%; background: #1e293b; padding: 6px; border-radius: 10px; border: 1px solid var(--border); }
-    .tab-btn { padding: 8px 14px; border: none; background: transparent; border-radius: 6px; font-weight: bold; cursor: pointer; color: var(--text-muted); font-size: 0.9rem; white-space: nowrap; transition: 0.2s; }
+    .tab-btn { padding: 8px 14px; border: none; background: transparent; border-radius: 6px; font-weight: bold; cursor: pointer; color: var(--text-muted); font-size: 0.9rem; white-space: nowrap; }
     .tab-btn.active { background: #334155; color: var(--primary); }
     .tab-btn.result-tab { background: #0f172a; color: #cbd5e1; border: 1px solid var(--border); }
-    .tab-btn.result-tab.active { background: var(--primary); color: #0f172a; border-color: var(--primary); }
+    .tab-btn.result-tab.active { background: var(--primary); color: #0f172a; }
 
-    /* カード */
+    /* カード・入力行 */
     .card { background: var(--card-bg); border-radius: 12px; padding: 16px; border: 1px solid var(--border); margin-bottom: 16px; }
-    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 14px; border-left: 4px solid var(--primary); padding-left: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
-    
-    /* 入力行 */
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 14px; border-left: 4px solid var(--primary); padding-left: 8px; display: flex; justify-content: space-between; align-items: center; }
     .expense-row { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; background: var(--card-inner); }
     .row-header { display: flex; justify-content: space-between; align-items: center; }
     .row-title-badge { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); }
     
     .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    @media (max-width: 480px) {
-      .input-grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 480px) { .input-grid { grid-template-columns: 1fr; } }
 
     .input-group { display: flex; flex-direction: column; gap: 4px; }
     .input-group label { font-size: 0.75rem; color: var(--text-muted); font-weight: bold; }
     input[type="text"], input[type="number"] { width: 100%; padding: 10px; background: #1e293b; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; color: #fff; }
-    input[type="text"]:focus, input[type="number"]:focus { outline: none; border-color: var(--primary); }
+    input:focus { outline: none; border-color: var(--primary); }
     
-    /* 傾斜配分設定エリア */
+    /* 傾斜配分 */
     .ratio-section { background: #172554; padding: 10px 12px; border-radius: 6px; border: 1px solid #1e40af; }
     .ratio-title { font-size: 0.75rem; font-weight: bold; color: var(--primary); margin-bottom: 8px; }
     .ratio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
     .ratio-item { display: flex; align-items: center; justify-content: space-between; background: #0f172a; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.85rem; }
     .ratio-item label { display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1; }
-    .ratio-input { width: 48px !important; padding: 4px !important; text-align: center; font-size: 0.85rem; }
+    .ratio-input { width: 48px !important; padding: 4px !important; text-align: center; }
 
     /* ボタン */
-    .btn { padding: 10px 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.9rem; min-height: 40px; }
+    .btn { padding: 10px 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; min-height: 40px; }
     .btn-block { width: 100%; }
-    .btn-primary { background: var(--primary); color: #0f172a; }
     .btn-secondary { background: #334155; color: var(--primary); border: 1px solid var(--border); }
-    .btn-danger-sm { background: transparent; color: var(--danger); border: 1px solid #7f1d1d; padding: 4px 8px; font-size: 0.75rem; min-height: auto; border-radius: 4px; }
-    .btn-danger-outline { background: transparent; color: var(--danger); border: 1px solid var(--danger); margin-top: 20px; }
+    .btn-danger-sm { background: transparent; color: var(--danger); border: 1px solid #7f1d1d; padding: 4px 8px; font-size: 0.75rem; }
 
     /* 精算結果 */
     .summary-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
@@ -75,17 +72,14 @@
     .stat-card .value { font-size: 1.25rem; font-weight: bold; color: var(--primary); margin-top: 2px; }
 
     .transfer-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-    .transfer-item { display: flex; flex-direction: column; gap: 4px; background: var(--card-inner); padding: 12px; border-radius: 8px; border-left: 4px solid var(--success); border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .transfer-item { display: flex; flex-direction: column; gap: 4px; background: var(--card-inner); padding: 12px; border-radius: 8px; border-left: 4px solid var(--success); border: 1px solid var(--border); }
     .transfer-route { display: flex; align-items: center; justify-content: space-between; font-size: 0.95rem; }
-    .transfer-amount { font-weight: bold; font-size: 1.15rem; color: #34d399; text-align: right; }
+    .transfer-amount { font-weight: bold; font-size: 1.15rem; color: #34d399; }
+    .badge-round { font-size: 0.7rem; background: #451a03; color: var(--accent-badge); padding: 2px 6px; border-radius: 4px; }
 
-    .badge-round { font-size: 0.7rem; background: #451a03; color: var(--accent-badge); padding: 2px 6px; border-radius: 4px; border: 1px solid #78350f; }
-
-    /* テーブル横スクロール */
-    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 8px; }
+    .table-container { overflow-x: auto; margin-top: 8px; }
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 420px; }
     th, td { padding: 8px 10px; border: 1px solid var(--border); }
-
     .hidden { display: none; }
   </style>
 </head>
@@ -93,17 +87,19 @@
 
 <div class="container">
   <h1>🌴 旅行費用 精算アプリ</h1>
-  <div class="save-indicator">💾 入力データはブラウザに自動保存されます</div>
 
-  <!-- タブ -->
+  <!-- 共有ボタンバー -->
+  <div class="share-bar">
+    <button class="btn btn-line" onclick="shareToLine()">💬 LINEに送る</button>
+    <button class="btn btn-copy" onclick="copyShareUrl()">📋 URLをコピー</button>
+  </div>
+
   <div class="tabs-wrapper">
     <div class="tabs" id="tabContainer"></div>
   </div>
 
-  <!-- 各メンバーの入力パネル -->
   <div id="inputPanels"></div>
 
-  <!-- 精算結果パネル -->
   <div id="resultPanel" class="card hidden">
     <div class="card-title">
       <span>📊 精算結果</span>
@@ -128,14 +124,11 @@
     <div class="table-container">
       <div id="memberBreakdown"></div>
     </div>
-
-    <button class="btn btn-danger-outline btn-block" onclick="resetAllData()">🗑️ データをすべて消去してリセット</button>
   </div>
 </div>
 
 <script>
   const MEMBERS = ['三村', '角田', '東', '松川', '桐生'];
-  const STORAGE_KEY = 'TRIP_SETTLEMENT_DATA_V1';
   
   let expenses = {
     '三村': [],
@@ -147,52 +140,75 @@
 
   let currentTab = '三村';
 
-  // データ保存
-  function saveData() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
-    } catch (e) {
-      console.error('保存に失敗しました', e);
-    }
+  // URLパラメータの生成（UTF-8 & Base64）
+  function generateShareUrl() {
+    const jsonStr = JSON.stringify(expenses);
+    const encodedData = btoa(encodeURIComponent(jsonStr));
+    const baseUrl = window.location.href.split('#')[0];
+    return `${baseUrl}#data=${encodedData}`;
   }
 
-  // データ読込
-  function loadData() {
+  // URLパラメータからの復元
+  function loadFromUrl() {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        expenses = JSON.parse(saved);
-        // メンバー定義の整合性チェック
-        MEMBERS.forEach(m => {
-          if (!Array.isArray(expenses[m])) expenses[m] = [];
-        });
-        return true;
+      const hash = window.location.hash;
+      if (hash.startsWith('#data=')) {
+        const rawBase64 = hash.replace('#data=', '');
+        const jsonStr = decodeURIComponent(atob(rawBase64));
+        const parsed = JSON.parse(jsonStr);
+        if (parsed && typeof parsed === 'object') {
+          expenses = parsed;
+          MEMBERS.forEach(m => {
+            if (!Array.isArray(expenses[m])) expenses[m] = [];
+          });
+          return true;
+        }
       }
     } catch (e) {
-      console.error('読込に失敗しました', e);
+      console.error('URLデータの解析に失敗しました', e);
     }
     return false;
+  }
+
+  // LINE共有
+  function shareToLine() {
+    const shareUrl = generateShareUrl();
+    const text = encodeURIComponent(`【旅行の立替精算データ】\n入力・更新した精算データです。リンクを開いて確認・追加入力してください。\n${shareUrl}`);
+    window.open(`https://line.me/R/msg/text/?${text}`, '_blank');
+  }
+
+  // URLコピー
+  function copyShareUrl() {
+    const shareUrl = generateShareUrl();
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert('共有用URLをクリップボードにコピーしました！\nLINEやチャットに貼り付けて送ってください。');
+    }).catch(() => {
+      prompt('以下のURLをコピーして共有してください：', shareUrl);
+    });
+  }
+
+  // 入力変更時にURLハッシュを自動更新
+  function updateUrlHash() {
+    const jsonStr = JSON.stringify(expenses);
+    const encodedData = btoa(encodeURIComponent(jsonStr));
+    window.history.replaceState(null, '', `#data=${encodedData}`);
   }
 
   function init() {
     renderTabs();
     renderPanels();
 
-    const hasData = loadData();
+    const loaded = loadFromUrl();
     let totalItems = 0;
     MEMBERS.forEach(m => { totalItems += expenses[m].length; });
 
-    if (hasData && totalItems > 0) {
-      // 復元描画
+    if (loaded && totalItems > 0) {
       MEMBERS.forEach(m => {
         const listContainer = document.getElementById(`list-${m}`);
         listContainer.innerHTML = '';
-        expenses[m].forEach(item => {
-          renderRowElement(m, item);
-        });
+        expenses[m].forEach(item => renderRowElement(m, item));
       });
     } else {
-      // 初期空行作成
       MEMBERS.forEach(m => addExpenseRow(m));
     }
   }
@@ -263,7 +279,7 @@
     const item = { id, title: '', amount: 0, ratios };
     expenses[payer].push(item);
     renderRowElement(payer, item);
-    saveData();
+    updateUrlHash();
   }
 
   function renderRowElement(payer, item) {
@@ -315,7 +331,7 @@
     const item = expenses[payer].find(x => x.id === id);
     if (item) {
       item[field] = value;
-      saveData();
+      updateUrlHash();
     }
   }
 
@@ -323,7 +339,7 @@
     const item = expenses[payer].find(x => x.id === id);
     if (item) {
       item.ratios[member] = Math.max(0, parseFloat(val) || 0);
-      saveData();
+      updateUrlHash();
     }
   }
 
@@ -343,20 +359,7 @@
     expenses[payer] = expenses[payer].filter(x => x.id !== id);
     const elem = document.getElementById(`row-${id}`);
     if (elem) elem.remove();
-    saveData();
-  }
-
-  function resetAllData() {
-    if (confirm('登録したすべての支払データを削除して初期化しますか？')) {
-      localStorage.removeItem(STORAGE_KEY);
-      MEMBERS.forEach(m => {
-        expenses[m] = [];
-        const list = document.getElementById(`list-${m}`);
-        if (list) list.innerHTML = '';
-        addExpenseRow(m);
-      });
-      switchTab('三村');
-    }
+    updateUrlHash();
   }
 
   function calculateSettlement() {
